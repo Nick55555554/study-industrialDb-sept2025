@@ -1,0 +1,9 @@
+# Frontend specific
+# Например, для React/Vue:
+/.next/
+/out/
+/.nuxt/
+/.svelte-kit/
+/static/sw.js
+/static/workbox-*.js
+/.vuepress/dist/
