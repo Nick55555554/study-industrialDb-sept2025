@@ -3,7 +3,7 @@ import type {Knex} from 'knex';
 import {Attack, type AttackData} from '../db/models/attack';
 import { Rate } from '../types/rate';
 
-export class SharedTicketFeedbackRepository {
+export class AttackRepository {
 
     static async create( data: Omit<AttackData, 'id'>, trx: Knex) {
         const feedback = await Attack.query(trx).insert({

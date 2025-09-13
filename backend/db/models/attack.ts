@@ -2,10 +2,10 @@ import { Model } from './base-model';
 import { Rate } from '../../types/rate';
 
 export interface AttackData {
-  id: string;
-  name: string;
-  frequency: Rate;
-  danger: Rate;
+    id: string;
+    name: string;
+    frequency: Rate;
+    danger: Rate;
 }
 
 export class Attack extends Model implements AttackData {
