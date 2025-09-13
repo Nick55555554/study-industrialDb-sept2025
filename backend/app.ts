@@ -1,8 +1,8 @@
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
-import db from "./db/connetion";
 import { dbMiddleware } from "./middlewares";
+import rootRouter from "./routes";
 
 dotenv.config();
 
@@ -13,3 +13,5 @@ app.use(cors());
 app.use(express.json());
 
 app.use(dbMiddleware);
+
+app.use(rootRouter)
