@@ -1,0 +1,8 @@
+uploads/
+temp/
+*.pid
+*.seed
+*.tgz
+*.tar.gz
+.elasticbeanstalk/
+.aws-sam/
