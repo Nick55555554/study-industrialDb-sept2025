@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import db from "../db/connetion";
+import db from "../db/connection";
 
 declare global {
     namespace Express {
