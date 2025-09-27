@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "IndustrialDbWorkingFrontend": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "nativeDebugging": false
+    }
+  }
+}

@@ -1,8 +1,13 @@
 {
   "profiles": {
-    "Windows Machine": {
-      "commandName": "MsixPackage",
+    "frontend": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
       "nativeDebugging": false
+    },
+    "Windows Machine": {
+      "commandName": "Project",
+      "commandLineArgs": "--framework net9.0-windows10.0.19041.0"
     }
   }
 }

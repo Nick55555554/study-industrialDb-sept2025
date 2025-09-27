@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="frontend.ShowDataPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             Title="Просмотр данных">
+    
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Назад" Clicked="OnBackClicked" />
+        <ToolbarItem Text="Обновить" Clicked="OnRefreshClicked" />
+    </ContentPage.ToolbarItems>
+    
+    <ScrollView>
+        <VerticalStackLayout Spacing="15" Padding="20">
+            
+            <Label Text="Сводная таблица EXPERIMENTS/RUNS" 
+                   FontSize="20" 
+                   FontAttributes="Bold" 
+                   HorizontalOptions="Center"/>
+            
+            <!-- Заголовок таблицы -->
+            <Grid ColumnDefinitions="2*,2*,2*,2*,2*" 
+                  BackgroundColor="#343A40" 
+                  Padding="10">
+                <Label Grid.Column="0" Text="Эксперимент" TextColor="White" FontAttributes="Bold"/>
+                <Label Grid.Column="1" Text="Дата" TextColor="White" FontAttributes="Bold"/>
+                <Label Grid.Column="2" Text="Запуск" TextColor="White" FontAttributes="Bold"/>
+                <Label Grid.Column="3" Text="Тип" TextColor="White" FontAttributes="Bold"/>
+                <Label Grid.Column="4" Text="Статус" TextColor="White" FontAttributes="Bold"/>
+            </Grid>
+            
+            <!-- Данные таблицы (имитация) -->
+            <VerticalStackLayout x:Name="DataContainer" Spacing="5">
+                
+                <!-- Пример строки данных -->
+                <Grid ColumnDefinitions="2*,2*,2*,2*,2*" 
+                      BackgroundColor="#F8F9FA" 
+                      Padding="10"
+                      HeightRequest="40">
+                    <Label Grid.Column="0" Text="Тест производительности" FontSize="12"/>
+                    <Label Grid.Column="1" Text="15.12.2024" FontSize="12"/>
+                    <Label Grid.Column="2" Text="Запуск #1" FontSize="12"/>
+                    <Label Grid.Column="3" Text="Производственный" FontSize="12"/>
+                    <Label Grid.Column="4" Text="Завершен" TextColor="Green" FontSize="12"/>
+                </Grid>
+                
+                <Grid ColumnDefinitions="2*,2*,2*,2*,2*" 
+                      BackgroundColor="#FFFFFF" 
+                      Padding="10"
+                      HeightRequest="40">
+                    <Label Grid.Column="0" Text="Анализ данных" FontSize="12"/>
+                    <Label Grid.Column="1" Text="16.12.2024" FontSize="12"/>
+                    <Label Grid.Column="2" Text="Запуск #2" FontSize="12"/>
+                    <Label Grid.Column="3" Text="Экспериментальный" FontSize="12"/>
+                    <Label Grid.Column="4" Text="В процессе" TextColor="Orange" FontSize="12"/>
+                </Grid>
+                
+            </VerticalStackLayout>
+            
+            <!-- Статистика -->
+            <Frame BackgroundColor="#E8F4FD" Padding="15">
+                <HorizontalStackLayout Spacing="20">
+                    <Label Text="Всего записей: 2" FontAttributes="Bold"/>
+                    <Label Text="Завершено: 1" TextColor="Green" FontAttributes="Bold"/>
+                    <Label Text="В процессе: 1" TextColor="Orange" FontAttributes="Bold"/>
+                </HorizontalStackLayout>
+            </Frame>
+            
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

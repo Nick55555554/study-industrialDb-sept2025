@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="IndustrialDbWorkingFrontend.MainPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             Title="Table Editor">
+    
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="15">
+            
+            <!-- Панель управления -->
+            <Border BackgroundColor="#f0f0f0" Padding="15" Stroke="LightGray" StrokeThickness="1">
+                <HorizontalStackLayout Spacing="10">
+                    <Button x:Name="CreateTableBtn" 
+                            Text="Создать таблицу" 
+                            Clicked="OnCreateTableClicked" 
+                            BackgroundColor="#007ACC"
+                            TextColor="White"
+                            Padding="10"/>
+                    
+                    <Button x:Name="AddColumnBtn" 
+                            Text="Добавить столбец" 
+                            Clicked="OnAddColumnClicked"
+                            BackgroundColor="#28a745"
+                            TextColor="White"
+                            Padding="10"
+                            IsEnabled="False"/>
+                    
+                    <Button x:Name="DeleteColumnBtn" 
+                            Text="Удалить столбец" 
+                            Clicked="OnDeleteColumnClicked"
+                            BackgroundColor="#dc3545"
+                            TextColor="White"
+                            Padding="10"
+                            IsEnabled="False"/>
+                    
+                    <Button x:Name="AddRowBtn" 
+                            Text="Добавить строку" 
+                            Clicked="OnAddRowClicked"
+                            BackgroundColor="#17a2b8"
+                            TextColor="White"
+                            Padding="10"
+                            IsEnabled="False"/>
+                </HorizontalStackLayout>
+            </Border>
+
+            <!-- Параметры таблицы -->
+            <Grid ColumnDefinitions="Auto,100" RowDefinitions="Auto,Auto" 
+                  ColumnSpacing="10" RowSpacing="10">
+                <Label Text="Кол-во столбцов:" VerticalOptions="Center"/>
+                <Entry x:Name="ColumnCountEntry" 
+                       Text="3" 
+                       Keyboard="Numeric"
+                       Grid.Column="1"/>
+                
+                <Label Text="Кол-во строк:" VerticalOptions="Center" Grid.Row="1"/>
+                <Entry x:Name="RowCountEntry" 
+                       Text="4" 
+                       Keyboard="Numeric"
+                       Grid.Column="1" Grid.Row="1"/>
+            </Grid>
+
+            <!-- Таблица -->
+            <Border x:Name="TableBorder" 
+                   BackgroundColor="White" 
+                   Stroke="LightGray"
+                   StrokeThickness="1"
+                   Padding="10"
+                   IsVisible="False">
+                <ScrollView x:Name="TableScrollView">
+                    <Grid x:Name="MainTableGrid" />
+                </ScrollView>
+            </Border>
+
+            <!-- Сообщение когда таблица не создана -->
+            <Label x:Name="NoTableLabel" 
+                   Text="Нажмите 'Создать таблицу' для начала работы" 
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center"
+                   FontSize="16"
+                   TextColor="Gray"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

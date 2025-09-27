@@ -1,24 +1,50 @@
-﻿namespace frontend;
+﻿using Microsoft.Maui.Controls;
 
-public partial class MainPage : ContentPage
+namespace frontend
 {
-	int count = 0;
+    public partial class MainPage : ContentPage
+    {
+        private Label welcomeLabel;
+        private Button addDataButton;
 
-	public MainPage()
-	{
-		InitializeComponent();
-	}
+        public MainPage()
+        {
+            CreateUI();
+        }
 
-	private void OnCounterClicked(object sender, EventArgs e)
-	{
-		count++;
+        private void CreateUI()
+        {
+            welcomeLabel = new Label 
+            { 
+                Text = "Industrial Database App",
+                FontSize = 32,
+                HorizontalOptions = LayoutOptions.Center
+            };
 
-		if (count == 1)
-			CounterBtn.Text = $"Clicked {count} time";
-		else
-			CounterBtn.Text = $"Clicked {count} times";
+            addDataButton = new Button 
+            { 
+                Text = "Add New Data",
+                BackgroundColor = Colors.Blue,
+                TextColor = Colors.White,
+                Padding = new Thickness(20, 10)
+            };
+            addDataButton.Clicked += OnAddDataClicked;
 
-		SemanticScreenReader.Announce(CounterBtn.Text);
-	}
+            Content = new ScrollView
+            {
+                Content = new VerticalStackLayout
+                {
+                    Spacing = 25,
+                    Padding = 30,
+                    Children = { welcomeLabel, addDataButton }
+                }
+            };
+        }
+
+        private async void OnAddDataClicked(object sender, System.EventArgs e)
+        {
+            welcomeLabel.Text = "Opening data form...";
+            await Navigation.PushModalAsync(new AddDataPage());
+        }
+    }
 }
-

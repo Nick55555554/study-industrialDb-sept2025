@@ -1,9 +1,19 @@
-﻿namespace frontend;
-
-public partial class AppShell : Shell
+﻿namespace frontend
 {
-    public AppShell()
+    public partial class AppShell : Shell
     {
-        InitializeComponent();
+        public AppShell()
+        {
+            // Уберите InitializeComponent() и создайте Shell в коде
+            var mainPage = new ShellContent
+            {
+                Title = "Home",
+                ContentTemplate = new DataTemplate(() => new MainPage()),
+                Route = "MainPage"
+            };
+
+            Items.Add(mainPage);
+            FlyoutBehavior = FlyoutBehavior.Disabled;
+        }
     }
 }
