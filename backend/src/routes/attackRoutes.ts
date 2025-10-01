@@ -13,6 +13,12 @@ router.get('/database/status', attackController.getDatabaseStatus);
 router.post('/attacks', attackController.createAttack);
 router.get('/attacks', attackController.getAllAttacks);
 router.get('/attacks/:id', attackController.getAttack);
+router.put('/attacks/:id', attackController.updateAttack); // Обновление атаки
+router.put('/attacks/:id/with-targets', attackController.updateAttackWithTargets); // Обновление атаки с целями
+router.put('/attacks/:id/targets', attackController.updateAttackTargets); // Обновление целей атаки
 router.delete('/attacks/:id', attackController.deleteAttack);
+
+// Target routes
+router.put('/targets/:id', attackController.updateTarget); // Обновление конкретной цели
 
 export default router;

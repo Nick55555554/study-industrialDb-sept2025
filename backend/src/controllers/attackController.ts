@@ -153,5 +153,109 @@ export class AttackController {
             });
         }
     }
+    async updateAttack(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const attackData = req.body;
+
+            const updatedAttack = await attackService.updateAttack(id, attackData);
+
+            if (!updatedAttack) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Attack not found"
+                });
+            }
+
+            res.json({
+                success: true,
+                message: "Attack updated successfully",
+                data: updatedAttack
+            });
+        } catch (error: any) {
+            console.error("Update attack error:", error);
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    async updateAttackWithTargets(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const { attack, targets } = req.body;
+
+            const updatedAttack = await attackService.updateAttackWithTargets(id, attack, targets);
+
+            if (!updatedAttack) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Attack not found"
+                });
+            }
+
+            res.json({
+                success: true,
+                message: "Attack with targets updated successfully",
+                data: updatedAttack
+            });
+        } catch (error: any) {
+            console.error("Update attack with targets error:", error);
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    async updateAttackTargets(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const { targets } = req.body;
+
+            const updatedTargets = await attackService.updateAttackTargets(id, targets);
+
+            res.json({
+                success: true,
+                message: "Attack targets updated successfully",
+                data: updatedTargets
+            });
+        } catch (error: any) {
+            console.error("Update attack targets error:", error);
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    async updateTarget(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const targetData = req.body;
+
+            const updatedTarget = await attackService.updateTarget(id, targetData);
+
+            if (!updatedTarget) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Target not found"
+                });
+            }
+
+            res.json({
+                success: true,
+                message: "Target updated successfully",
+                data: updatedTarget
+            });
+        } catch (error: any) {
+            console.error("Update target error:", error);
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
 
 }
