@@ -1,55 +1,67 @@
-import { db } from '../db';
-import { Target, CreateTargetRequest, UpdateTargetRequest, Protocol } from '../models';
+import { db } from "../db";
+import {
+    Target,
+    CreateTargetRequest,
+    UpdateTargetRequest,
+    Protocol,
+} from "../models";
 
 export class TargetRepository {
-    async create(targetData: Omit<Target, 'id' | 'created_at'>): Promise<Target> {
-        const [target] = await db('targets')
+    async create(
+        targetData: Omit<Target, "id" | "created_at">,
+    ): Promise<Target> {
+        const [target] = await db("targets")
             .insert({
                 ...targetData,
                 tags: targetData.tags || [],
-                created_at: new Date()
+                created_at: new Date(),
             })
-            .returning('*');
+            .returning("*");
 
         return target;
     }
 
-    async createMultiple(targetsData: Omit<Target, 'id' | 'created_at'>[]): Promise<Target[]> {
-        const dataWithTimestamp = targetsData.map(target => ({
+    async createMultiple(
+        targetsData: Omit<Target, "id" | "created_at">[],
+    ): Promise<Target[]> {
+        const dataWithTimestamp = targetsData.map((target) => ({
             ...target,
             tags: target.tags || [],
-            created_at: new Date()
+            created_at: new Date(),
         }));
 
-        return await db('targets')
-            .insert(dataWithTimestamp)
-            .returning('*');
+        return await db("targets").insert(dataWithTimestamp).returning("*");
     }
 
-    async update(id: string, targetData: UpdateTargetRequest): Promise<Target | null> {
+    async update(
+        id: string,
+        targetData: UpdateTargetRequest,
+    ): Promise<Target | null> {
         try {
-            const [updatedTarget] = await db('targets')
+            const [updatedTarget] = await db("targets")
                 .where({ id })
                 .update(targetData)
-                .returning('*');
+                .returning("*");
 
             return updatedTarget || null;
         } catch (error) {
-            console.error('Error updating target:', error);
+            console.error("Error updating target:", error);
             return null;
         }
     }
 
-    async updateMultiple(targetsData: Array<{ id: string } & UpdateTargetRequest>): Promise<Target[]> {
+    async updateMultiple(
+        targetsData: Array<{ id: string } & UpdateTargetRequest>,
+    ): Promise<Target[]> {
         return await db.transaction(async (trx) => {
             const updatedTargets = [];
 
             for (const targetData of targetsData) {
                 const { id, ...updateData } = targetData;
-                const [updatedTarget] = await trx('targets')
+                const [updatedTarget] = await trx("targets")
                     .where({ id })
                     .update(updateData)
-                    .returning('*');
+                    .returning("*");
 
                 if (updatedTarget) {
                     updatedTargets.push(updatedTarget);
@@ -61,11 +73,13 @@ export class TargetRepository {
     }
 
     async findByAttackId(attackId: string): Promise<Target[]> {
-        return await db('targets').where({ attack_id: attackId });
+        return await db("targets").where({ attack_id: attackId });
     }
 
     async deleteByAttackId(attackId: string): Promise<boolean> {
-        const result = await db('targets').where({ attack_id: attackId }).delete();
+        const result = await db("targets")
+            .where({ attack_id: attackId })
+            .delete();
         return result > 0;
     }
 }

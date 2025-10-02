@@ -1,33 +1,33 @@
-import { Target, CreateTargetRequest} from "./target"
+import { Target, CreateTargetRequest } from "./target";
 
 export enum AttackFrequency {
-  LOW = 'low',
-  MEDIUM = 'medium',
-  HIGH = 'high',
-  VERY_HIGH = 'very_high'
+    LOW = "low",
+    MEDIUM = "medium",
+    HIGH = "high",
+    VERY_HIGH = "very_high",
 }
 
 export enum AttackDanger {
-  LOW = 'low',
-  MEDIUM = 'medium',
-  HIGH = 'high',
-  CRITICAL = 'critical'
+    LOW = "low",
+    MEDIUM = "medium",
+    HIGH = "high",
+    CRITICAL = "critical",
 }
 
 export enum AttackType {
-  VOLUMETRIC = 'volumetric',
-  PROTOCOL = 'protocol',
-  APPLICATION = 'application',
-  AMPLIFICATION = 'amplification'
+    VOLUMETRIC = "volumetric",
+    PROTOCOL = "protocol",
+    APPLICATION = "application",
+    AMPLIFICATION = "amplification",
 }
 
 export enum Protocol {
-  HTTP = 'http',
-  HTTPS = 'https',
-  TCP = 'tcp',
-  UDP = 'udp',
-  SSH = 'ssh',
-  DNS = 'dns'
+    HTTP = "http",
+    HTTPS = "https",
+    TCP = "tcp",
+    UDP = "udp",
+    SSH = "ssh",
+    DNS = "dns",
 }
 
 export interface Attack {

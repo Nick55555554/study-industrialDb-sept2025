@@ -12,7 +12,7 @@ declare global {
 export const dbMiddleware = (
     req: Request,
     _res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     req.db = db;
     next();

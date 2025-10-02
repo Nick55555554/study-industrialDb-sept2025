@@ -1,4 +1,4 @@
-import { Protocol } from './attack';
+import { Protocol } from "./attack";
 
 export interface Target {
     id: string;

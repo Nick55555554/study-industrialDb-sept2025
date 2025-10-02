@@ -1,5 +1,5 @@
-import { Request, Response } from 'express';
-import { AttackService } from '../services/attackService';
+import { Request, Response } from "express";
+import { AttackService } from "../services/attackService";
 
 const attackService = new AttackService();
 
@@ -16,24 +16,24 @@ export class AttackController {
             } else {
                 res.status(409).json({
                     success: false,
-                    message: result.message
+                    message: result.message,
                 });
             }
         } catch (error) {
-            console.error('Initialize database error:', error);
+            console.error("Initialize database error:", error);
             res.status(500).json({
                 success: false,
-                message: 'Failed to initialize database'
+                message: "Failed to initialize database",
             });
         }
     }
 
     async resetDatabase(req: Request, res: Response) {
         try {
-            if (process.env.NODE_ENV === 'production') {
+            if (process.env.NODE_ENV === "production") {
                 return res.status(403).json({
                     success: false,
-                    message: 'Database reset is not allowed in production'
+                    message: "Database reset is not allowed in production",
                 });
             }
 
@@ -41,13 +41,13 @@ export class AttackController {
 
             res.json({
                 success: result.success,
-                message: result.message
+                message: result.message,
             });
         } catch (error) {
-            console.error('Reset database error:', error);
+            console.error("Reset database error:", error);
             res.status(500).json({
                 success: false,
-                message: 'Failed to reset database'
+                message: "Failed to reset database",
             });
         }
     }
@@ -58,31 +58,33 @@ export class AttackController {
 
             res.json({
                 success: true,
-                data: status
+                data: status,
             });
         } catch (error) {
-            console.error('Get database status error:', error);
+            console.error("Get database status error:", error);
             res.status(500).json({
                 success: false,
-                message: 'Failed to get database status'
+                message: "Failed to get database status",
             });
         }
     }
 
     async createAttack(req: Request, res: Response) {
         try {
-            const attack = await attackService.createAttackWithTargets(req.body);
+            const attack = await attackService.createAttackWithTargets(
+                req.body,
+            );
 
             res.status(201).json({
                 success: true,
                 message: "Attack created successfully",
-                data: attack
+                data: attack,
             });
         } catch (error) {
             console.error("Create attack error:", error);
             res.status(500).json({
                 success: false,
-                message: "Failed to create attack"
+                message: "Failed to create attack",
             });
         }
     }
@@ -95,19 +97,19 @@ export class AttackController {
             if (!attack) {
                 return res.status(404).json({
                     success: false,
-                    message: "Attack not found"
+                    message: "Attack not found",
                 });
             }
 
             res.json({
                 success: true,
-                data: attack
+                data: attack,
             });
         } catch (error) {
             console.error("Get attack error:", error);
             res.status(500).json({
                 success: false,
-                message: "Failed to get attack"
+                message: "Failed to get attack",
             });
         }
     }
@@ -118,13 +120,13 @@ export class AttackController {
 
             res.json({
                 success: true,
-                data: attacks
+                data: attacks,
             });
         } catch (error) {
             console.error("Get all attacks error:", error);
             res.status(500).json({
                 success: false,
-                message: "Failed to get attacks"
+                message: "Failed to get attacks",
             });
         }
     }
@@ -137,19 +139,19 @@ export class AttackController {
             if (!deleted) {
                 return res.status(404).json({
                     success: false,
-                    message: "Attack not found"
+                    message: "Attack not found",
                 });
             }
 
             res.json({
                 success: true,
-                message: "Attack deleted successfully"
+                message: "Attack deleted successfully",
             });
         } catch (error) {
             console.error("Delete attack error:", error);
             res.status(500).json({
                 success: false,
-                message: "Failed to delete attack"
+                message: "Failed to delete attack",
             });
         }
     }
@@ -158,25 +160,28 @@ export class AttackController {
             const { id } = req.params;
             const attackData = req.body;
 
-            const updatedAttack = await attackService.updateAttack(id, attackData);
+            const updatedAttack = await attackService.updateAttack(
+                id,
+                attackData,
+            );
 
             if (!updatedAttack) {
                 return res.status(404).json({
                     success: false,
-                    message: "Attack not found"
+                    message: "Attack not found",
                 });
             }
 
             res.json({
                 success: true,
                 message: "Attack updated successfully",
-                data: updatedAttack
+                data: updatedAttack,
             });
         } catch (error: any) {
             console.error("Update attack error:", error);
             res.status(500).json({
                 success: false,
-                message: error.message
+                message: error.message,
             });
         }
     }
@@ -186,25 +191,29 @@ export class AttackController {
             const { id } = req.params;
             const { attack, targets } = req.body;
 
-            const updatedAttack = await attackService.updateAttackWithTargets(id, attack, targets);
+            const updatedAttack = await attackService.updateAttackWithTargets(
+                id,
+                attack,
+                targets,
+            );
 
             if (!updatedAttack) {
                 return res.status(404).json({
                     success: false,
-                    message: "Attack not found"
+                    message: "Attack not found",
                 });
             }
 
             res.json({
                 success: true,
                 message: "Attack with targets updated successfully",
-                data: updatedAttack
+                data: updatedAttack,
             });
         } catch (error: any) {
             console.error("Update attack with targets error:", error);
             res.status(500).json({
                 success: false,
-                message: error.message
+                message: error.message,
             });
         }
     }
@@ -214,18 +223,21 @@ export class AttackController {
             const { id } = req.params;
             const { targets } = req.body;
 
-            const updatedTargets = await attackService.updateAttackTargets(id, targets);
+            const updatedTargets = await attackService.updateAttackTargets(
+                id,
+                targets,
+            );
 
             res.json({
                 success: true,
                 message: "Attack targets updated successfully",
-                data: updatedTargets
+                data: updatedTargets,
             });
         } catch (error: any) {
             console.error("Update attack targets error:", error);
             res.status(500).json({
                 success: false,
-                message: error.message
+                message: error.message,
             });
         }
     }
@@ -235,27 +247,29 @@ export class AttackController {
             const { id } = req.params;
             const targetData = req.body;
 
-            const updatedTarget = await attackService.updateTarget(id, targetData);
+            const updatedTarget = await attackService.updateTarget(
+                id,
+                targetData,
+            );
 
             if (!updatedTarget) {
                 return res.status(404).json({
                     success: false,
-                    message: "Target not found"
+                    message: "Target not found",
                 });
             }
 
             res.json({
                 success: true,
                 message: "Target updated successfully",
-                data: updatedTarget
+                data: updatedTarget,
             });
         } catch (error: any) {
             console.error("Update target error:", error);
             res.status(500).json({
                 success: false,
-                message: error.message
+                message: error.message,
             });
         }
     }
-
 }

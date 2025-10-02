@@ -1,18 +1,14 @@
-import { db } from '../db';
-import { AttackRepository } from '../repositories/attackRepository';
-import { TargetRepository } from '../repositories/targetRepository';
+import { db } from "../db";
+import { AttackRepository } from "../repositories/attackRepository";
+import { TargetRepository } from "../repositories/targetRepository";
 import {
     Attack,
     CreateAttackRequest,
     AttackWithTargets,
     UpdateAttackRequest,
     UpdateTargetRequest,
-    AttackFrequency,
-    AttackDanger,
-    AttackType,
-    Protocol,
-    Target
-} from '../models';
+    Target,
+} from "../models";
 
 export class AttackService {
     private attackRepository: AttackRepository;
@@ -23,7 +19,9 @@ export class AttackService {
         this.targetRepository = new TargetRepository();
     }
 
-    async createAttackWithTargets(attackData: CreateAttackRequest): Promise<AttackWithTargets> {
+    async createAttackWithTargets(
+        attackData: CreateAttackRequest,
+    ): Promise<AttackWithTargets> {
         return await db.transaction(async (trx) => {
             // Создаем атаку
             const attack = await this.attackRepository.create({
@@ -33,32 +31,35 @@ export class AttackService {
                 attack_type: attackData.attack_type,
                 source_ips: attackData.source_ips || [],
                 affected_ports: attackData.affected_ports || [],
-                mitigation_strategies: attackData.mitigation_strategies || []
+                mitigation_strategies: attackData.mitigation_strategies || [],
             });
 
             // Создаем цели если они есть
             let targets: Target[] = [];
             if (attackData.targets && attackData.targets.length > 0) {
-                const targetsData = attackData.targets.map(target => ({
+                const targetsData = attackData.targets.map((target) => ({
                     attack_id: attack.id,
                     target_ip: target.target_ip,
                     target_domain: target.target_domain,
                     port: target.port,
                     protocol: target.protocol,
-                    tags: target.tags || []
+                    tags: target.tags || [],
                 }));
 
-                targets = await this.targetRepository.createMultiple(targetsData);
+                targets =
+                    await this.targetRepository.createMultiple(targetsData);
             }
 
             return {
                 ...attack,
-                targets
+                targets,
             };
         });
     }
 
-    async getAttackWithTargets(attackId: string): Promise<AttackWithTargets | null> {
+    async getAttackWithTargets(
+        attackId: string,
+    ): Promise<AttackWithTargets | null> {
         const attack = await this.attackRepository.findById(attackId);
         if (!attack) return null;
 
@@ -66,7 +67,7 @@ export class AttackService {
 
         return {
             ...attack,
-            targets
+            targets,
         };
     }
 
@@ -74,34 +75,53 @@ export class AttackService {
         return await this.attackRepository.findAll();
     }
 
-    async updateAttack(attackId: string, attackData: UpdateAttackRequest): Promise<Attack | null> {
+    async updateAttack(
+        attackId: string,
+        attackData: UpdateAttackRequest,
+    ): Promise<Attack | null> {
         try {
             return await this.attackRepository.update(attackId, attackData);
         } catch (error: any) {
-            console.error('Update attack error:', error);
+            console.error("Update attack error:", error);
             throw new Error(`Failed to update attack: ${error.message}`);
         }
     }
 
-    async updateAttackWithTargets(attackId: string, attackData: UpdateAttackRequest, targetsData?: UpdateTargetRequest[]): Promise<AttackWithTargets | null> {
+    async updateAttackWithTargets(
+        attackId: string,
+        attackData: UpdateAttackRequest,
+        targetsData?: UpdateTargetRequest[],
+    ): Promise<AttackWithTargets | null> {
         try {
-            return await this.attackRepository.updateWithTargets(attackId, attackData, targetsData);
+            return await this.attackRepository.updateWithTargets(
+                attackId,
+                attackData,
+                targetsData,
+            );
         } catch (error: any) {
-            console.error('Update attack with targets error:', error);
-            throw new Error(`Failed to update attack with targets: ${error.message}`);
+            console.error("Update attack with targets error:", error);
+            throw new Error(
+                `Failed to update attack with targets: ${error.message}`,
+            );
         }
     }
 
-    async updateTarget(targetId: string, targetData: UpdateTargetRequest): Promise<Target | null> {
+    async updateTarget(
+        targetId: string,
+        targetData: UpdateTargetRequest,
+    ): Promise<Target | null> {
         try {
             return await this.targetRepository.update(targetId, targetData);
         } catch (error: any) {
-            console.error('Update target error:', error);
+            console.error("Update target error:", error);
             throw new Error(`Failed to update target: ${error.message}`);
         }
     }
 
-    async updateAttackTargets(attackId: string, targetsData: UpdateTargetRequest[]): Promise<Target[]> {
+    async updateAttackTargets(
+        attackId: string,
+        targetsData: UpdateTargetRequest[],
+    ): Promise<Target[]> {
         try {
             // Удаляем старые цели и создаем новые
             await this.targetRepository.deleteByAttackId(attackId);
@@ -110,19 +130,21 @@ export class AttackService {
                 return [];
             }
 
-            const targetsToCreate = targetsData.map(target => ({
+            const targetsToCreate = targetsData.map((target) => ({
                 attack_id: attackId,
                 target_ip: target.target_ip!,
                 target_domain: target.target_domain,
                 port: target.port,
                 protocol: target.protocol,
-                tags: target.tags || []
+                tags: target.tags || [],
             }));
 
             return await this.targetRepository.createMultiple(targetsToCreate);
         } catch (error: any) {
-            console.error('Update attack targets error:', error);
-            throw new Error(`Failed to update attack targets: ${error.message}`);
+            console.error("Update attack targets error:", error);
+            throw new Error(
+                `Failed to update attack targets: ${error.message}`,
+            );
         }
     }
 
@@ -137,7 +159,7 @@ export class AttackService {
             if (tablesExist) {
                 return {
                     success: false,
-                    message: 'Tables already exist'
+                    message: "Tables already exist",
                 };
             }
 
@@ -145,14 +167,14 @@ export class AttackService {
 
             return {
                 success: true,
-                message: 'Tables created successfully'
+                message: "Tables created successfully",
             };
         } catch (error: any) {
-            console.error('Database initialization error:', error);
+            console.error("Database initialization error:", error);
             const errorMessage = error?.message || String(error);
             return {
                 success: false,
-                message: `Failed to create tables: ${errorMessage}`
+                message: `Failed to create tables: ${errorMessage}`,
             };
         }
     }
@@ -164,14 +186,14 @@ export class AttackService {
 
             return {
                 success: true,
-                message: 'Database reset successfully'
+                message: "Database reset successfully",
             };
         } catch (error: any) {
-            console.error('Database reset error:', error);
+            console.error("Database reset error:", error);
             const errorMessage = error?.message || String(error);
             return {
                 success: false,
-                message: `Failed to reset database: ${errorMessage}`
+                message: `Failed to reset database: ${errorMessage}`,
             };
         }
     }
@@ -187,8 +209,12 @@ export class AttackService {
             let targetsCount = 0;
 
             if (tablesExist) {
-                const attacksResult = await db('ddos_attacks').count('id as count').first();
-                const targetsResult = await db('targets').count('id as count').first();
+                const attacksResult = await db("ddos_attacks")
+                    .count("id as count")
+                    .first();
+                const targetsResult = await db("targets")
+                    .count("id as count")
+                    .first();
 
                 attacksCount = parseInt(attacksResult?.count as string) || 0;
                 targetsCount = parseInt(targetsResult?.count as string) || 0;
@@ -197,14 +223,14 @@ export class AttackService {
             return {
                 tablesExist,
                 attacksCount,
-                targetsCount
+                targetsCount,
             };
         } catch (error) {
-            console.error('Database status check error:', error);
+            console.error("Database status check error:", error);
             return {
                 tablesExist: false,
                 attacksCount: 0,
-                targetsCount: 0
+                targetsCount: 0,
             };
         }
     }

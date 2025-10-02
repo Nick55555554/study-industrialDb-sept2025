@@ -1,20 +1,19 @@
-
-export enum Rate{
+export enum Rate {
     // Очень распространенные (ежедневно)
-    VERY_COMMON = 'VERY_COMMON',
+    VERY_COMMON = "VERY_COMMON",
 
     // Распространенные (еженедельно)
-    COMMON = 'COMMON',
+    COMMON = "COMMON",
 
     // Нечастые (ежемесячно)
-    UNCOMMON = 'UNCOMMON',
+    UNCOMMON = "UNCOMMON",
 
     // Редкие (ежеквартально)
-    RARE = 'RARE',
+    RARE = "RARE",
 
     // Очень редкие (раз в год)
-    VERY_RARE = 'VERY_RARE',
+    VERY_RARE = "VERY_RARE",
 
     // Экзотические (единичные случаи)
-    EXOTIC = 'EXOTIC'
+    EXOTIC = "EXOTIC",
 }

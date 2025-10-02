@@ -1,2 +1,2 @@
-export * from './attack';
-export * from './target';
+export * from "./attack";
+export * from "./target";
