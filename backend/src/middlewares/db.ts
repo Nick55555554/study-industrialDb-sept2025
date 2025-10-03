@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import db from "../db";
+import { db } from "../db";
 
 declare global {
     namespace Express {
@@ -12,7 +12,7 @@ declare global {
 export const dbMiddleware = (
     req: Request,
     _res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     req.db = db;
     next();
