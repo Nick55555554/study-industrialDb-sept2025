@@ -4,7 +4,8 @@ import filterRoutes from './filterRoutes';
 
 const router = Router();
 
-router.use('/', attackRoutes);
 router.use('/', filterRoutes);
+router.use('/', attackRoutes);
+
 
 export default router;

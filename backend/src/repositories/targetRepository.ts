@@ -1,85 +1,169 @@
-import { db } from "../db";
-import {
-    Target,
-    CreateTargetRequest,
-    UpdateTargetRequest,
-    Protocol,
-} from "../models";
+import { db } from '../db';
+import { Target, CreateTargetRequest, UpdateTargetRequest, Protocol } from '../models';
+import { dbLogger } from '../logger';
 
 export class TargetRepository {
-    async create(
-        targetData: Omit<Target, "id" | "created_at">,
-    ): Promise<Target> {
-        const [target] = await db("targets")
-            .insert({
-                ...targetData,
-                tags: targetData.tags || [],
-                created_at: new Date(),
-            })
-            .returning("*");
-
-        return target;
-    }
-
-    async createMultiple(
-        targetsData: Omit<Target, "id" | "created_at">[],
-    ): Promise<Target[]> {
-        const dataWithTimestamp = targetsData.map((target) => ({
-            ...target,
-            tags: target.tags || [],
-            created_at: new Date(),
-        }));
-
-        return await db("targets").insert(dataWithTimestamp).returning("*");
-    }
-
-    async update(
-        id: string,
-        targetData: UpdateTargetRequest,
-    ): Promise<Target | null> {
+    async create(targetData: Omit<Target, 'id' | 'created_at'>): Promise<Target> {
         try {
-            const [updatedTarget] = await db("targets")
+            dbLogger.debug('Creating new target', {
+                targetIp: targetData.target_ip,
+                attackId: targetData.attack_id
+            });
+
+            const [target] = await db('targets')
+                .insert({
+                    ...targetData,
+                    tags: targetData.tags || [],
+                    created_at: new Date()
+                })
+                .returning('*');
+
+            dbLogger.debug('Target created successfully', {
+                targetId: target.id,
+                targetIp: target.target_ip
+            });
+
+            return target;
+        } catch (error: any) {
+            dbLogger.error('Error creating target', {
+                error: error.message,
+                targetData: {
+                    targetIp: targetData.target_ip,
+                    attackId: targetData.attack_id
+                }
+            });
+            throw error;
+        }
+    }
+
+    async createMultiple(targetsData: Omit<Target, 'id' | 'created_at'>[]): Promise<Target[]> {
+        try {
+            dbLogger.debug('Creating multiple targets', { count: targetsData.length });
+
+            const dataWithTimestamp = targetsData.map(target => ({
+                ...target,
+                tags: target.tags || [],
+                created_at: new Date()
+            }));
+
+            const targets = await db('targets')
+                .insert(dataWithTimestamp)
+                .returning('*');
+
+            dbLogger.debug('Multiple targets created successfully', {
+                count: targets.length
+            });
+
+            return targets;
+        } catch (error: any) {
+            dbLogger.error('Error creating multiple targets', {
+                error: error.message,
+                targetsCount: targetsData.length
+            });
+            throw error;
+        }
+    }
+
+    async update(id: string, targetData: UpdateTargetRequest): Promise<Target | null> {
+        try {
+            dbLogger.info('Updating target', { targetId: id, updates: targetData });
+
+            const [updatedTarget] = await db('targets')
                 .where({ id })
                 .update(targetData)
-                .returning("*");
+                .returning('*');
+
+            if (updatedTarget) {
+                dbLogger.info('Target updated successfully', { targetId: id });
+            } else {
+                dbLogger.warn('Target not found for update', { targetId: id });
+            }
 
             return updatedTarget || null;
-        } catch (error) {
-            console.error("Error updating target:", error);
+        } catch (error: any) {
+            dbLogger.error('Error updating target', {
+                targetId: id,
+                error: error.message,
+                updates: targetData
+            });
             return null;
         }
     }
 
-    async updateMultiple(
-        targetsData: Array<{ id: string } & UpdateTargetRequest>,
-    ): Promise<Target[]> {
+    async updateMultiple(targetsData: Array<{ id: string } & UpdateTargetRequest>): Promise<Target[]> {
         return await db.transaction(async (trx) => {
-            const updatedTargets = [];
+            try {
+                dbLogger.debug('Updating multiple targets', { count: targetsData.length });
 
-            for (const targetData of targetsData) {
-                const { id, ...updateData } = targetData;
-                const [updatedTarget] = await trx("targets")
-                    .where({ id })
-                    .update(updateData)
-                    .returning("*");
+                const updatedTargets = [];
 
-                if (updatedTarget) {
-                    updatedTargets.push(updatedTarget);
+                for (const targetData of targetsData) {
+                    const { id, ...updateData } = targetData;
+                    const [updatedTarget] = await trx('targets')
+                        .where({ id })
+                        .update(updateData)
+                        .returning('*');
+
+                    if (updatedTarget) {
+                        updatedTargets.push(updatedTarget);
+                    }
                 }
-            }
 
-            return updatedTargets;
+                dbLogger.debug('Multiple targets updated successfully', {
+                    count: updatedTargets.length
+                });
+
+                return updatedTargets;
+            } catch (error: any) {
+                dbLogger.error('Error updating multiple targets', {
+                    error: error.message,
+                    targetsCount: targetsData.length
+                });
+                throw error;
+            }
         });
     }
 
     async findByAttackId(attackId: string): Promise<Target[]> {
-        return await db("targets").where({ attack_id: attackId });
+        try {
+            dbLogger.debug('Finding targets by attack ID', { attackId });
+            const targets = await db('targets').where({ attack_id: attackId });
+            dbLogger.debug('Found targets by attack ID', {
+                attackId,
+                count: targets.length
+            });
+            return targets;
+        } catch (error: any) {
+            dbLogger.error('Error finding targets by attack ID', {
+                attackId,
+                error: error.message
+            });
+            throw error;
+        }
     }
 
     async deleteByAttackId(attackId: string): Promise<boolean> {
-        const result = await db("targets")
-            .where({ attack_id: attackId })
-            .delete();
-        return result > 0;
+        try {
+            dbLogger.info('Deleting targets by attack ID', { attackId });
+            const result = await db('targets').where({ attack_id: attackId }).delete();
+            const success = result > 0;
+
+            if (success) {
+                dbLogger.info('Targets deleted successfully by attack ID', {
+                    attackId,
+                    deletedCount: result
+                });
+            } else {
+                dbLogger.debug('No targets found for deletion by attack ID', { attackId });
+            }
+
+            return success;
+        } catch (error: any) {
+            dbLogger.error('Error deleting targets by attack ID', {
+                attackId,
+                error: error.message
+            });
+            return false;
+        }
     }
 }

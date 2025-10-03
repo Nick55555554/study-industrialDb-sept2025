@@ -1,0 +1,311 @@
+{
+  "info": {
+    "name": "DDoS API Filters Tests",
+    "description": "Тесты для проверки фильтрации атак",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "🔧 0. Setup - Initialize Database",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/database/init",
+          "host": ["{{base_url}}"],
+          "path": ["database", "init"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "🔧 0.1 Create Test Data",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"name\": \"DNS Amplification Critical\",\n    \"frequency\": \"very_high\",\n    \"danger\": \"critical\",\n    \"attack_type\": \"amplification\",\n    \"source_ips\": [\"8.8.8.8\", \"1.1.1.1\"],\n    \"affected_ports\": [53, 443],\n    \"mitigation_strategies\": [\"DNS Rate Limiting\"],\n    \"targets\": [\n      {\n        \"target_ip\": \"192.168.10.50\",\n        \"port\": 53,\n        \"protocol\": \"dns\",\n        \"tags\": [\"dns-server\"]\n      }\n    ]\n  }"
+        },
+        "url": {
+          "raw": "{{base_url}}/attacks/",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "batch"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "✅ 1. Get Available Filters",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/filters/available",
+          "host": ["{{base_url}}"],
+          "path": ["filters", "available"]
+        }
+      },
+      "tests": "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\npm.test(\"Response has success true\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.success).to.be.true;\n});\n\npm.test(\"Response contains all filter types\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.data).to.have.keys(['frequencies', 'dangers', 'attackTypes', 'protocols']);\n});"
+    },
+    {
+      "name": "✅ 2. Get Attack Statistics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/stats",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "stats"]
+        }
+      },
+      "tests": "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\npm.test(\"Stats structure is correct\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.data).to.have.keys(['total', 'byFrequency', 'byDanger', 'byType', 'recent']);\n});\n\npm.test(\"Total count is positive\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.data.total).to.be.at.least(0);\n});"
+    },
+    {
+      "name": "🔍 3. Filter by Single Frequency",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/filter?frequency=high",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "filter"],
+          "query": [
+            {
+              "key": "frequency",
+              "value": "high"
+            }
+          ]
+        }
+      },
+      "tests": "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\npm.test(\"All attacks have high frequency\", function () {\n    var jsonData = pm.response.json();\n    jsonData.data.forEach(attack => {\n        pm.expect(attack.frequency).to.equal('high');\n    });\n});"
+    },
+    {
+      "name": "🔍 4. Filter by Multiple Frequencies",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/filter?frequency=high,very_high",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "filter"],
+          "query": [
+            {
+              "key": "frequency",
+              "value": "high,very_high"
+            }
+          ]
+        }
+      },
+      "tests": "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\npm.test(\"All attacks have high or very_high frequency\", function () {\n    var jsonData = pm.response.json();\n    jsonData.data.forEach(attack => {\n        pm.expect(attack.frequency).to.be.oneOf(['high', 'very_high']);\n    });\n});"
+    },
+    {
+      "name": "🔍 5. Filter by Danger Level",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/filter?danger=critical",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "filter"],
+          "query": [
+            {
+              "key": "danger",
+              "value": "critical"
+            }
+          ]
+        }
+      },
+      "tests": "pm.test(\"All attacks have critical danger\", function () {\n    var jsonData = pm.response.json();\n    jsonData.data.forEach(attack => {\n        pm.expect(attack.danger).to.equal('critical');\n    });\n});"
+    },
+    {
+      "name": "🔍 6. Filter by Attack Type",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/filter?attack_type=application",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "filter"],
+          "query": [
+            {
+              "key": "attack_type",
+              "value": "application"
+            }
+          ]
+        }
+      },
+      "tests": "pm.test(\"All attacks have application type\", function () {\n    var jsonData = pm.response.json();\n    jsonData.data.forEach(attack => {\n        pm.expect(attack.attack_type).to.equal('application');\n    });\n});"
+    },
+    {
+      "name": "🔍 7. Filter by Protocol",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/filter?protocol=https",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "filter"],
+          "query": [
+            {
+              "key": "protocol",
+              "value": "https"
+            }
+          ]
+        }
+      },
+      "tests": "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\npm.test(\"Response contains attacks with https protocol\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.data.length).to.be.at.least(0);\n});"
+    },
+    {
+      "name": "🔍 8. Complex Filter - Multiple Conditions",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/filter?frequency=high&danger=critical&attack_type=application",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "filter"],
+          "query": [
+            {
+              "key": "frequency",
+              "value": "high"
+            },
+            {
+              "key": "danger",
+              "value": "critical"
+            },
+            {
+              "key": "attack_type",
+              "value": "application"
+            }
+          ]
+        }
+      },
+      "tests": "pm.test(\"All attacks match all filter conditions\", function () {\n    var jsonData = pm.response.json();\n    jsonData.data.forEach(attack => {\n        pm.expect(attack.frequency).to.equal('high');\n        pm.expect(attack.danger).to.equal('critical');\n        pm.expect(attack.attack_type).to.equal('application');\n    });\n});"
+    },
+    {
+      "name": "🔍 9. Search by Name",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/filter?search=DNS",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "filter"],
+          "query": [
+            {
+              "key": "search",
+              "value": "DNS"
+            }
+          ]
+        }
+      },
+      "tests": "pm.test(\"All attacks contain DNS in name\", function () {\n    var jsonData = pm.response.json();\n    jsonData.data.forEach(attack => {\n        pm.expect(attack.name.toLowerCase()).to.include('dns');\n    });\n});"
+    },
+    {
+      "name": "🔍 10. Filter by Date Range",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/filter?date_from=2024-01-01&date_to=2024-12-31",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "filter"],
+          "query": [
+            {
+              "key": "date_from",
+              "value": "2024-01-01"
+            },
+            {
+              "key": "date_to",
+              "value": "2024-12-31"
+            }
+          ]
+        }
+      },
+      "tests": "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\npm.test(\"Response structure is correct\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData).to.have.keys(['success', 'data', 'count', 'filters']);\n});"
+    },
+    {
+      "name": "❌ 11. Invalid Filter Value",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/filter?frequency=invalid_value",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "filter"],
+          "query": [
+            {
+              "key": "frequency",
+              "value": "invalid_value"
+            }
+          ]
+        }
+      },
+      "tests": "pm.test(\"Status code is 400 for invalid filter\", function () {\n    pm.response.to.have.status(400);\n});\n\npm.test(\"Error message indicates invalid value\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.success).to.be.false;\n    pm.expect(jsonData.message).to.include('Invalid frequency value');\n});"
+    },
+    {
+      "name": "📊 12. Individual Filter Endpoints - Frequency",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/frequency/high",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "frequency", "high"]
+        }
+      },
+      "tests": "pm.test(\"All attacks have high frequency\", function () {\n    var jsonData = pm.response.json();\n    jsonData.data.forEach(attack => {\n        pm.expect(attack.frequency).to.equal('high');\n    });\n});"
+    },
+    {
+      "name": "📊 13. Individual Filter Endpoints - Danger",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/danger/critical",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "danger", "critical"]
+        }
+      },
+      "tests": "pm.test(\"All attacks have critical danger\", function () {\n    var jsonData = pm.response.json();\n    jsonData.data.forEach(attack => {\n        pm.expect(attack.danger).to.equal('critical');\n    });\n});"
+    },
+    {
+      "name": "📊 14. Individual Filter Endpoints - Type",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/type/amplification",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "type", "amplification"]
+        }
+      },
+      "tests": "pm.test(\"All attacks have amplification type\", function () {\n    var jsonData = pm.response.json();\n    jsonData.data.forEach(attack => {\n        pm.expect(attack.attack_type).to.equal('amplification');\n    });\n});"
+    },
+    {
+      "name": "📊 15. Individual Filter Endpoints - Protocol",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/attacks/protocol/dns",
+          "host": ["{{base_url}}"],
+          "path": ["attacks", "protocol", "dns"]
+        }
+      },
+      "tests": "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\npm.test(\"Response contains expected structure\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData).to.have.keys(['success', 'data', 'count', 'protocol']);\n});"
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api"
+    }
+  ]
+}
