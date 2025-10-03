@@ -1,6 +1,4 @@
 import customtkinter as ctk
-from datetime import datetime
-
 
 class Header:
     def __init__(self, parent, app):
@@ -24,7 +22,7 @@ class Header:
         # Заголовок слева
         self.title_label = ctk.CTkLabel(
             title_stats_frame,
-            text="Attack Dashboard",
+            text="Главное окно",
             font=ctk.CTkFont(size=24, weight="bold"),
             text_color=self.app.colors["text_light"]
         )
@@ -37,7 +35,7 @@ class Header:
         # Создаем labels для статистики
         self.total_attacks_label = ctk.CTkLabel(
             stats_frame,
-            text="Total Attacks: 0",
+            text="Всего атак: 0",
             font=ctk.CTkFont(size=14),
             text_color=self.app.colors["text_light"]
         )
@@ -45,7 +43,7 @@ class Header:
 
         self.total_targets_label = ctk.CTkLabel(
             stats_frame,
-            text="Total Targets: 0",
+            text="Всего целей: 0",
             font=ctk.CTkFont(size=14),
             text_color=self.app.colors["text_light"]
         )
@@ -61,10 +59,9 @@ class Header:
     def update_stats(self):
         """Обновление статистики в заголовке"""
         try:
-            # Проверяем, что attacks существует и это список
             if not hasattr(self.app, 'attacks') or not isinstance(self.app.attacks, list):
-                self.total_attacks_label.configure(text="Total Attacks: 0")
-                self.total_targets_label.configure(text="Total Targets: 0")
+                self.total_attacks_label.configure(text="Всего атак: 0")
+                self.total_targets_label.configure(text="Всего целей: 0")
                 return
 
             total_attacks = len(self.app.attacks)
@@ -76,13 +73,12 @@ class Header:
                     total_targets += len(attack["targets"])
 
             # Обновляем labels
-            self.total_attacks_label.configure(text=f"Total Attacks: {total_attacks}")
-            self.total_targets_label.configure(text=f"Total Targets: {total_targets}")
+            self.total_attacks_label.configure(text=f"Всего атак: {total_attacks}")
+            self.total_targets_label.configure(text=f"Всего целей: {total_targets}")
 
         except Exception as e:
             print(f"Error updating header stats: {e}")
-            # Устанавливаем значения по умолчанию при ошибке
             if hasattr(self, 'total_attacks_label'):
-                self.total_attacks_label.configure(text="Total Attacks: Error")
+                self.total_attacks_label.configure(text="Всего атак: Ошибка")
             if hasattr(self, 'total_targets_label'):
-                self.total_targets_label.configure(text="Total Targets: Error")
+                self.total_targets_label.configure(text="Всего целей: Ошибка")

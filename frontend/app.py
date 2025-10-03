@@ -1,15 +1,15 @@
 import customtkinter as ctk
 from ui.sidebar import Sidebar
 from ui.header import Header
-from ui.forms import AttackForm
-from ui.table import AttackTable
+from ui.main_window import MainWindow
 from ui.dashboard import Dashboard
 from ui.settings import Settings
 from api.client import DDOSApiClient
-from utils.helpers import generate_id, get_current_timestamp
+from utils.logger import AppLogger
 import threading
 from tkinter import messagebox
 from typing import List, Dict, Any
+
 
 class DDoSAttackApp:
     def __init__(self):
@@ -20,6 +20,9 @@ class DDoSAttackApp:
 
         # Инициализация API клиента
         self.api_client = DDOSApiClient()
+
+        # Инициализация логгера
+        self.logger = AppLogger()
 
         # Проверка и инициализация БД при запуске
         self.initialize_database()
@@ -56,9 +59,13 @@ class DDoSAttackApp:
     def load_attacks_from_server(self) -> List[Dict[str, Any]]:
         """Загрузка атак с сервера"""
         try:
-            return self.api_client.get_all_attacks()
+            self.logger.log_info("Загрузка данных атак с сервера...")
+            attacks = self.api_client.get_all_attacks()
+            self.logger.log_info(f"Успешно загружено {len(attacks)} атак")
+            return attacks
         except Exception as e:
-            self.show_error(f"Failed to load attacks from server: {e}")
+            self.logger.log_error(f"Ошибка загрузки атак с сервера: {e}")
+            self.show_error(f"Ошибка загрузки данных с сервера: {e}")
             return []
 
     def check_database_connection(self):
@@ -66,12 +73,17 @@ class DDoSAttackApp:
 
         def check():
             try:
+                self.logger.log_info("Проверка подключения к базе данных...")
                 status = self.api_client.check_database_status()
-                print(f"✅ Database status: {status}")
+                if status.get('success'):
+                    tables_exist = status.get('data', {}).get('tablesExist', False)
+                    status_msg = "существуют" if tables_exist else "не существуют"
+                    self.logger.log_info(f"Таблицы в БД: {status_msg}")
+                else:
+                    self.logger.log_warning("Не удалось проверить статус БД")
             except Exception as e:
-                self.show_error(f"❌ Database connection failed: {e}")
+                self.logger.log_error(f"Ошибка проверки подключения к БД: {e}")
 
-        # Запускаем в отдельном потоке чтобы не блокировать UI
         thread = threading.Thread(target=check)
         thread.daemon = True
         thread.start()
@@ -96,8 +108,8 @@ class DDoSAttackApp:
         self.header = Header(container, self)
         self.content_frame = self.create_content_frame(container)
 
-        # Показываем дашборд по умолчанию
-        self.show_dashboard()
+        # Показываем главное окно по умолчанию
+        self.show_main_window()
 
     def create_content_frame(self, parent):
         """Создание контентной области"""
@@ -110,83 +122,101 @@ class DDoSAttackApp:
         for widget in self.content_frame.winfo_children():
             widget.destroy()
 
+    def show_main_window(self):
+        """Показать главное окно с кнопками"""
+        self.clear_content()
+        self.header.set_title("Главное окно")
+        from ui.main_window import MainWindow
+        MainWindow(self.content_frame, self)
+
     def show_attack_form(self):
-        """Показать форму создания атаки"""
+        """Показать форму создания атаки (старая логика для совместимости)"""
         self.clear_content()
         self.header.set_title("Create New Attack")
+        from ui.attack_form import AttackForm
         AttackForm(self.content_frame, self)
 
     def show_attacks_list(self):
-        """Показать список атак"""
+        """Показать список атак (старая логика для совместимости)"""
         self.clear_content()
         self.header.set_title("All Attacks")
+        from ui.attack_table import AttackTable
         AttackTable(self.content_frame, self)
 
     def show_dashboard(self):
         """Показать дашборд"""
         self.clear_content()
         self.header.set_title("Attack Dashboard")
+        from ui.dashboard import Dashboard
         Dashboard(self.content_frame, self)
 
     def show_settings(self):
         """Показать настройки"""
         self.clear_content()
         self.header.set_title("Settings")
+        from ui.settings import Settings
         Settings(self.content_frame, self)
-
-    def save_data(self):
-        """Сохранение данных (теперь через API)"""
-        # Данные сохраняются непосредственно при операциях через API
-        pass
 
     def refresh_attacks(self):
         """Обновление списка атак с сервера"""
         try:
+            self.logger.log_info("Обновление списка атак...")
             self.attacks = self.api_client.get_all_attacks()
             self.update_stats()
+            self.logger.log_info("Список атак успешно обновлен")
         except Exception as e:
-            self.show_error(f"Failed to refresh attacks: {e}")
+            self.logger.log_error(f"Ошибка обновления атак: {e}")
+            self.show_error(f"Ошибка обновления данных: {e}")
 
     def update_stats(self):
         """Обновление статистики во всех компонентах"""
-        self.sidebar.update_stats()
-        self.header.update_stats()
+        if hasattr(self, 'sidebar'):
+            self.sidebar.update_stats()
+        if hasattr(self, 'header'):
+            self.header.update_stats()
 
     def show_error(self, message):
         """Показ ошибки"""
-        messagebox.showerror("Error", message)
+        self.logger.log_error(f"Ошибка UI: {message}")
+        messagebox.showerror("Ошибка", message)
 
     def show_success(self, message):
         """Показ успеха"""
-        messagebox.showinfo("Success", message)
-
-    # ДОБАВЛЕННЫЕ МЕТОДЫ ДЛЯ СОВМЕСТИМОСТИ
-    def get_current_timestamp(self):
-        """Получение текущей даты и времени"""
-        from utils.helpers import get_current_timestamp
-        return get_current_timestamp()
-
-    def generate_id(self):
-        """Генерация UUID"""
-        from utils.helpers import generate_id
-        return generate_id()
+        self.logger.log_info(f"Успех: {message}")
+        messagebox.showinfo("Успех", message)
 
     def run(self):
         """Запуск приложения"""
+        self.logger.log_info("Запуск приложения DDoS Attack Manager")
         self.window.mainloop()
 
     def initialize_database(self):
         """Автоматическая инициализация базы данных при запуске"""
         try:
-            # Проверяем статус БД
-            status = self.api_client.check_database_status()
-            if not status.get('data', {}).get('tablesExist', False):
-                print("🔄 Tables don't exist. Initializing database...")
-                result = self.api_client.initialize_database()
-                print("✅ Database initialized successfully")
+            self.logger.log_info("Проверка и инициализация базы данных...")
+
+            # Всегда пытаемся инициализировать БД
+            # Если таблицы уже существуют - это нормально
+            result = self.api_client.initialize_database()
+
+            if result.get('success') or result.get('status') == 'already_exists':
+                self.logger.log_database_operation("CREATE_SCHEMA", True)
+                if result.get('status') == 'already_exists':
+                    self.logger.log_info("Таблицы уже существуют в базе данных")
+                else:
+                    self.logger.log_info("База данных успешно инициализирована")
             else:
-                print("✅ Database is ready")
+                self.logger.log_database_operation("CREATE_SCHEMA", False)
+                self.logger.log_warning("Не удалось инициализировать базу данных")
+
         except Exception as e:
-            print(f"❌ Database initialization failed: {e}")
-            # Показываем ошибку пользователю
-            self.show_error(f"Database initialization failed: {e}")
+            # Если ошибка связана с тем, что таблицы уже существуют - это нормально
+            if "409" in str(e) or "already exists" in str(e).lower():
+                self.logger.log_database_operation("CREATE_SCHEMA", True)
+                self.logger.log_info("Таблицы уже существуют в базе данных")
+            else:
+                error_msg = f"Ошибка инициализации базы данных: {e}"
+                self.logger.log_error(error_msg)
+                self.logger.log_database_operation("CREATE_SCHEMA", False)
+                # Не показываем ошибку пользователю при запуске
+                # self.show_error(error_msg)

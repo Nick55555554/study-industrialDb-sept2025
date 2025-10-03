@@ -1,7 +1,6 @@
 import customtkinter as ctk
 from datetime import datetime
 
-
 class Sidebar:
     def __init__(self, parent, app):
         self.app = app
@@ -43,10 +42,10 @@ class Sidebar:
 
         # Кнопки навигации
         nav_buttons = [
-            ("📊 Attack Dashboard", self.app.show_dashboard),
-            ("➕ New Attack", self.app.show_attack_form),
-            ("📋 All Attacks", self.app.show_attacks_list),
-            ("⚙️ Settings", self.app.show_settings)
+            ("🏠 Главное окно", self.app.show_main_window),
+            ("📊 Дашборд", self.app.show_dashboard),
+            ("📋 Все атаки", self.app.show_attacks_list),
+            ("⚙️ Настройки", self.app.show_settings)
         ]
 
         for text, command in nav_buttons:
@@ -60,7 +59,7 @@ class Sidebar:
         stats_frame = ctk.CTkFrame(parent, fg_color="#2a2a4a")
         stats_frame.pack(fill="x", padx=15, pady=20)
 
-        ctk.CTkLabel(stats_frame, text="Quick Stats",
+        ctk.CTkLabel(stats_frame, text="Быстрая статистика",
                      font=ctk.CTkFont(weight="bold")).pack(anchor="w", pady=(10, 5))
 
         self.stats_label = ctk.CTkLabel(stats_frame, text="", justify="left",
@@ -73,8 +72,7 @@ class Sidebar:
         """Обновление статистики в сайдбаре"""
         try:
             if not hasattr(self.app, 'attacks') or not isinstance(self.app.attacks, list):
-                stats_text = "Total Attacks: 0\nCritical: 0\nActive: 0\nLast Updated: " + datetime.now().strftime(
-                    "%H:%M")
+                stats_text = "Всего атак: 0\nКритичных: 0\nАктивных: 0\nОбновлено: " + datetime.now().strftime("%H:%M")
                 self.stats_label.configure(text=stats_text)
                 return
 
@@ -100,20 +98,20 @@ class Sidebar:
                         high_freq_attacks += 1
 
             current_time = datetime.now().strftime("%H:%M")
-            stats_text = f"""Total Attacks: {total_attacks}
-Critical: {critical_attacks}
-Active: {active_attacks}
-High Frequency: {high_freq_attacks}
-Last Updated: {current_time}"""
+            stats_text = f"""Всего атак: {total_attacks}
+Критичных: {critical_attacks}
+Активных: {active_attacks}
+Высокой частоты: {high_freq_attacks}
+Обновлено: {current_time}"""
 
             self.stats_label.configure(text=stats_text)
 
         except Exception as e:
             print(f"Error updating sidebar stats: {e}")
             current_time = datetime.now().strftime("%H:%M")
-            stats_text = f"""Total Attacks: Error
-Critical: Error
-Active: Error
-High Frequency: Error
-Last Updated: {current_time}"""
+            stats_text = f"""Всего атак: Ошибка
+Критичных: Ошибка
+Активных: Ошибка
+Высокой частоты: Ошибка
+Обновлено: {current_time}"""
             self.stats_label.configure(text=stats_text)

@@ -1,7 +1,6 @@
 import customtkinter as ctk
 from typing import List, Dict, Any
 
-
 class Dashboard:
     def __init__(self, parent, app):
         self.app = app

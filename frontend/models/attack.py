@@ -2,10 +2,6 @@ import uuid
 from datetime import datetime
 from typing import List, Dict, Any
 
-
-
-
-
 class Attack:
     class Target:
         def __init__(self, target_id: str, ip_address: str, protocol: str, status: str = "active"):

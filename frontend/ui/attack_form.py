@@ -1,16 +1,14 @@
 import customtkinter as ctk
 from typing import List, Dict, Any
 import threading
-from models.attack import Attack
 from tkinter import messagebox
-
 
 class AttackForm:
     def __init__(self, parent, app):
         self.app = app
         self.parent = parent
         self.target_fields = []
-        self.setup_ui(parent)  # Этот метод должен существовать!
+        self.setup_ui(parent)
 
     def setup_ui(self, parent):
         """Настройка пользовательского интерфейса формы"""
@@ -115,8 +113,7 @@ class AttackForm:
         mitigation_frame = ctk.CTkFrame(self.form_frame)
         mitigation_frame.pack(fill="x", pady=10)
 
-        ctk.CTkLabel(mitigation_frame, text="Mitigation Strategies", font=("Arial", 16, "bold")).pack(anchor="w",
-                                                                                                      pady=10)
+        ctk.CTkLabel(mitigation_frame, text="Mitigation Strategies", font=("Arial", 16, "bold")).pack(anchor="w", pady=10)
 
         ctk.CTkLabel(mitigation_frame, text="Strategies (one per line)").pack(anchor="w")
         self.mitigation_text = ctk.CTkTextbox(mitigation_frame, height=80)

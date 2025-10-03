@@ -1,8 +1,6 @@
 import requests
 import json
-from typing import List, Dict, Any, Optional
-from models.attack import Attack
-
+from typing import List, Dict, Any
 
 class DDOSApiClient:
     def __init__(self, base_url: str = "http://localhost:3000/api"):
@@ -20,15 +18,31 @@ class DDOSApiClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            raise Exception(f"Database status check failed: {e}")
+            print(f"Error checking database status: {e}")
+            # Возвращаем статус по умолчанию при ошибке
+            return {"success": False, "data": {"tablesExist": False}}
 
     def initialize_database(self) -> Dict[str, Any]:
         """Создание таблиц"""
         try:
             response = self.session.post(f"{self.base_url}/database/init")
+            # Если таблицы уже существуют (409), это не ошибка для нас
+            if response.status_code == 409:
+                return {
+                    "success": True,
+                    "message": "Tables already exist",
+                    "status": "already_exists"
+                }
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
+            # Если это конфликт (таблицы уже существуют), обрабатываем как успех
+            if "409" in str(e):
+                return {
+                    "success": True,
+                    "message": "Tables already exist",
+                    "status": "already_exists"
+                }
             raise Exception(f"Database initialization failed: {e}")
 
     def get_all_attacks(self) -> List[Dict[str, Any]]:
@@ -37,30 +51,21 @@ class DDOSApiClient:
             response = self.session.get(f"{self.base_url}/attacks")
             response.raise_for_status()
 
-            # Добавьте отладку
-            print(f"Response status: {response.status_code}")
-            print(f"Response content: {response.text}")
-
             data = response.json()
 
-            # Проверяем структуру ответа
             if isinstance(data, dict) and 'data' in data:
-                # Если ответ в формате {success: true, data: [...]}
                 return data['data']
             elif isinstance(data, list):
-                # Если ответ сразу массив
                 return data
             else:
-                print(f"Unexpected response format: {data}")
                 return []
 
         except requests.exceptions.RequestException as e:
-            print(f"Request failed: {e}")
-            raise Exception(f"Failed to fetch attacks: {e}")
+            print(f"Error fetching attacks: {e}")
+            return []
         except json.JSONDecodeError as e:
             print(f"JSON decode error: {e}")
-            print(f"Response text: {response.text}")
-            raise Exception(f"Invalid JSON response: {e}")
+            return []
 
     def get_attack(self, attack_id: str) -> Dict[str, Any]:
         """Получение конкретной атаки"""

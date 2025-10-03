@@ -3,7 +3,6 @@ from tkinter import ttk
 import threading
 from tkinter import messagebox
 
-
 class AttackTable:
     def __init__(self, parent, app):
         self.app = app
