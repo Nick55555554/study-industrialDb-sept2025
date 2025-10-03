@@ -300,6 +300,8 @@ export class AttackRepository {
 
                         table.timestamp("created_at").defaultTo(db.fn.now());
                         table.timestamp("updated_at").defaultTo(db.fn.now());
+
+                        table.check('LENGTH(name) >= 3 AND LENGTH(name) <= 40', [], 'ddos_attacks');
                     });
                     dbLogger.info('Table ddos_attacks created');
                 }
