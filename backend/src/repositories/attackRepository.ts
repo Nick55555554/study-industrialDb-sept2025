@@ -9,6 +9,9 @@ import {
     Target,
     UpdateTargetRequest,
     AttackWithTargets,
+    AttackFilter,
+    AttackStats,
+    Protocol
 } from "../models";
 
 export class AttackRepository {
@@ -253,4 +256,169 @@ export class AttackRepository {
             return false;
         }
     }
+
+    async findByFilters(filters: AttackFilter): Promise<Attack[]> {
+        let query = db('ddos_attacks')
+            .select('ddos_attacks.*')
+            .distinct('ddos_attacks.id');
+
+        // Фильтр по frequency
+        if (filters.frequency) {
+            if (Array.isArray(filters.frequency)) {
+                query = query.whereIn('ddos_attacks.frequency', filters.frequency);
+            } else {
+                query = query.where('ddos_attacks.frequency', filters.frequency);
+            }
+        }
+
+        // Фильтр по danger
+        if (filters.danger) {
+            if (Array.isArray(filters.danger)) {
+                query = query.whereIn('ddos_attacks.danger', filters.danger);
+            } else {
+                query = query.where('ddos_attacks.danger', filters.danger);
+            }
+        }
+
+        // Фильтр по attack_type
+        if (filters.attack_type) {
+            if (Array.isArray(filters.attack_type)) {
+                query = query.whereIn('ddos_attacks.attack_type', filters.attack_type);
+            } else {
+                query = query.where('ddos_attacks.attack_type', filters.attack_type);
+            }
+        }
+
+        // Фильтр по protocol (из таблицы targets)
+        if (filters.protocol) {
+            query = query
+                .leftJoin('targets', 'ddos_attacks.id', 'targets.attack_id');
+
+            if (Array.isArray(filters.protocol)) {
+                query = query.whereIn('targets.protocol', filters.protocol);
+            } else {
+                query = query.where('targets.protocol', filters.protocol);
+            }
+        }
+
+        // Фильтр по дате
+        if (filters.date_from) {
+            query = query.where('ddos_attacks.created_at', '>=', filters.date_from);
+        }
+
+        if (filters.date_to) {
+            query = query.where('ddos_attacks.created_at', '<=', filters.date_to);
+        }
+
+        // Поиск по имени
+        if (filters.search) {
+            query = query.where('ddos_attacks.name', 'ilike', `%${filters.search}%`);
+        }
+
+        const attacks = await query;
+        return attacks;
+    }
+
+    async getStats(): Promise<AttackStats> {
+        // Общее количество атак
+        const totalResult = await db('ddos_attacks').count('id as count').first();
+        const total = parseInt(totalResult?.count as string) || 0;
+
+        // Статистика по frequency
+        const frequencyStats = await db('ddos_attacks')
+            .select('frequency')
+            .count('id as count')
+            .groupBy('frequency');
+
+        const byFrequency = this.initializeEnumObject(AttackFrequency);
+        frequencyStats.forEach(stat => {
+            byFrequency[stat.frequency as AttackFrequency] = parseInt(stat.count as string);
+        });
+
+        // Статистика по danger
+        const dangerStats = await db('ddos_attacks')
+            .select('danger')
+            .count('id as count')
+            .groupBy('danger');
+
+        const byDanger = this.initializeEnumObject(AttackDanger);
+        dangerStats.forEach(stat => {
+            byDanger[stat.danger as AttackDanger] = parseInt(stat.count as string);
+        });
+
+        // Статистика по attack_type
+        const typeStats = await db('ddos_attacks')
+            .select('attack_type')
+            .count('id as count')
+            .groupBy('attack_type');
+
+        const byType = this.initializeEnumObject(AttackType);
+        typeStats.forEach(stat => {
+            byType[stat.attack_type as AttackType] = parseInt(stat.count as string);
+        });
+
+        // Количество атак за последние 7 дней
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+
+        const recentResult = await db('ddos_attacks')
+            .where('created_at', '>=', weekAgo)
+            .count('id as count')
+            .first();
+
+        const recent = parseInt(recentResult?.count as string) || 0;
+
+        return {
+            total,
+            byFrequency,
+            byDanger,
+            byType,
+            recent
+        };
+    }
+
+    async getAvailableFilters(): Promise<{
+        frequencies: AttackFrequency[];
+        dangers: AttackDanger[];
+        attackTypes: AttackType[];
+        protocols: Protocol[];
+    }> {
+        // Получаем уникальные значения из базы данных
+        const frequencies = await db('ddos_attacks')
+            .distinct('frequency')
+            .pluck('frequency');
+
+        const dangers = await db('ddos_attacks')
+            .distinct('danger')
+            .pluck('danger');
+
+        const attackTypes = await db('ddos_attacks')
+            .distinct('attack_type')
+            .pluck('attack_type');
+
+        const protocols = await db('targets')
+            .distinct('protocol')
+            .whereNotNull('protocol')
+            .pluck('protocol');
+
+        return {
+            frequencies: frequencies as AttackFrequency[],
+            dangers: dangers as AttackDanger[],
+            attackTypes: attackTypes as AttackType[],
+            protocols: protocols as Protocol[]
+        };
+    }
+
+   private initializeEnumObject<T extends string>(enumObj: any): Record<T, number> {
+    const result = {} as Record<T, number>;
+
+    // Более безопасный подход - используем Object.keys и фильтруем числовые ключи
+    Object.keys(enumObj)
+        .filter(key => isNaN(Number(key))) // Игнорируем числовые ключи (reverse mapping)
+        .forEach(key => {
+            result[enumObj[key] as T] = 0;
+        });
+
+    return result;
+}
 }

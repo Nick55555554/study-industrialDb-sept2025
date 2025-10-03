@@ -8,6 +8,12 @@ import {
     UpdateAttackRequest,
     UpdateTargetRequest,
     Target,
+    AttackDanger,
+    AttackFilter,
+    AttackFrequency,
+    AttackStats,
+    AttackType,
+    Protocol
 } from "../models";
 
 export class AttackService {
@@ -233,5 +239,52 @@ export class AttackService {
                 targetsCount: 0,
             };
         }
+    }
+     async getAttacksByFilters(filters: AttackFilter): Promise<Attack[]> {
+        try {
+            return await this.attackRepository.findByFilters(filters);
+        } catch (error: any) {
+            console.error('Get attacks by filters error:', error);
+            throw new Error(`Failed to get attacks by filters: ${error.message}`);
+        }
+    }
+
+    async getAttackStats(): Promise<AttackStats> {
+        try {
+            return await this.attackRepository.getStats();
+        } catch (error: any) {
+            console.error('Get attack stats error:', error);
+            throw new Error(`Failed to get attack stats: ${error.message}`);
+        }
+    }
+
+    async getAvailableFilters(): Promise<{
+        frequencies: AttackFrequency[];
+        dangers: AttackDanger[];
+        attackTypes: AttackType[];
+        protocols: Protocol[];
+    }> {
+        try {
+            return await this.attackRepository.getAvailableFilters();
+        } catch (error: any) {
+            console.error('Get available filters error:', error);
+            throw new Error(`Failed to get available filters: ${error.message}`);
+        }
+    }
+
+    async getAttacksByFrequency(frequency: AttackFrequency): Promise<Attack[]> {
+        return await this.getAttacksByFilters({ frequency });
+    }
+
+    async getAttacksByDanger(danger: AttackDanger): Promise<Attack[]> {
+        return await this.getAttacksByFilters({ danger });
+    }
+
+    async getAttacksByType(attackType: AttackType): Promise<Attack[]> {
+        return await this.getAttacksByFilters({ attack_type: attackType });
+    }
+
+    async getAttacksByProtocol(protocol: Protocol): Promise<Attack[]> {
+        return await this.getAttacksByFilters({ protocol });
     }
 }

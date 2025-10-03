@@ -67,3 +67,21 @@ export interface UpdateAttackRequest {
 export interface AttackWithTargets extends Attack {
     targets: Target[];
 }
+
+export interface AttackFilter {
+    frequency?: AttackFrequency | AttackFrequency[];
+    danger?: AttackDanger | AttackDanger[];
+    attack_type?: AttackType | AttackType[];
+    protocol?: Protocol | Protocol[];
+    date_from?: string;
+    date_to?: string;
+    search?: string;
+}
+
+export interface AttackStats {
+    total: number;
+    byFrequency: Record<AttackFrequency, number>;
+    byDanger: Record<AttackDanger, number>;
+    byType: Record<AttackType, number>;
+    recent: number;
+}

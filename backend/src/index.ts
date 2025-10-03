@@ -1,14 +1,13 @@
 
 import "dotenv/config";
 import express from "express";
-import attackRoutes from "./routes/attackRoutes";
+import routes from './routes';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-
-app.use("/api", attackRoutes);
+app.use('/api', routes); // Используем объединенные роуты
 
 app.get("/health", async (req, res) => {
     try {
