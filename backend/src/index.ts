@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import 'dotenv/config';
 import express from "express";
 import cors from "cors";
 import { dbMiddleware } from "./middlewares";
@@ -8,7 +8,15 @@ import db from "./db";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 
-dotenv.config();
+
+
+// console.log('🔍 Environment variables:');
+// console.log('DB_HOST:', process.env.DB_HOST);
+// console.log('DB_PORT:', process.env.DB_PORT);
+// console.log('DB_NAME:', process.env.DB_NAME);
+// console.log('DB_USER:', process.env.DB_USER);
+// console.log('DB_PASSWORD:', process.env.DB_PASSWORD);
+// console.log('DB_PASSWORD type:', typeof process.env.DB_PASSWORD);
 
 const app = express();
 
