@@ -1,6 +1,6 @@
 import requests
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 class DDOSApiClient:
     def __init__(self, base_url: str = "http://localhost:3000/api"):
@@ -19,14 +19,12 @@ class DDOSApiClient:
             return response.json()
         except requests.exceptions.RequestException as e:
             print(f"Error checking database status: {e}")
-            # Возвращаем статус по умолчанию при ошибке
             return {"success": False, "data": {"tablesExist": False}}
 
     def initialize_database(self) -> Dict[str, Any]:
         """Создание таблиц"""
         try:
             response = self.session.post(f"{self.base_url}/database/init")
-            # Если таблицы уже существуют (409), это не ошибка для нас
             if response.status_code == 409:
                 return {
                     "success": True,
@@ -36,7 +34,6 @@ class DDOSApiClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            # Если это конфликт (таблицы уже существуют), обрабатываем как успех
             if "409" in str(e):
                 return {
                     "success": True,
@@ -45,21 +42,140 @@ class DDOSApiClient:
                 }
             raise Exception(f"Database initialization failed: {e}")
 
+    def filter_attacks_by_frequency(self, frequencies: List[str]) -> List[Dict[str, Any]]:
+        """Фильтрация атак по частоте"""
+        try:
+            if not frequencies:
+                return self.get_all_attacks()
+
+            frequency_param = ",".join(frequencies)
+            response = self.session.get(
+                f"{self.base_url}/attacks/filter",
+                params={"frequency": frequency_param}
+            )
+            response.raise_for_status()
+            data = response.json()
+            return self._extract_attacks_data(data)
+        except requests.exceptions.RequestException as e:
+            print(f"Filter by frequency error: {e}")
+            return []
+
+    def filter_attacks_by_danger(self, danger_levels: List[str]) -> List[Dict[str, Any]]:
+        """Фильтрация атак по уровню опасности"""
+        try:
+            if not danger_levels:
+                return self.get_all_attacks()
+
+            danger_param = ",".join(danger_levels)
+            response = self.session.get(
+                f"{self.base_url}/attacks/filter",
+                params={"danger": danger_param}
+            )
+            response.raise_for_status()
+            data = response.json()
+            return self._extract_attacks_data(data)
+        except requests.exceptions.RequestException as e:
+            print(f"Filter by danger error: {e}")
+            return []
+
+    def filter_attacks_by_attack_type(self, attack_types: List[str]) -> List[Dict[str, Any]]:
+        """Фильтрация атак по типу атаки"""
+        try:
+            if not attack_types:
+                return self.get_all_attacks()
+
+            attack_type_param = ",".join(attack_types)
+            response = self.session.get(
+                f"{self.base_url}/attacks/filter",
+                params={"attack_type": attack_type_param}
+            )
+            response.raise_for_status()
+            data = response.json()
+            return self._extract_attacks_data(data)
+        except requests.exceptions.RequestException as e:
+            print(f"Filter by attack type error: {e}")
+            return []
+
+    def filter_attacks_by_protocol(self, protocols: List[str]) -> List[Dict[str, Any]]:
+        """Фильтрация атак по протоколу"""
+        try:
+            if not protocols:
+                return self.get_all_attacks()
+
+            protocol_param = ",".join(protocols)
+            response = self.session.get(
+                f"{self.base_url}/attacks/filter",
+                params={"protocol": protocol_param}
+            )
+            response.raise_for_status()
+            data = response.json()
+            return self._extract_attacks_data(data)
+        except requests.exceptions.RequestException as e:
+            print(f"Filter by protocol error: {e}")
+            return []
+
+    def filter_attacks_by_multiple(self, frequencies: Optional[List[str]] = None,
+                                   danger_levels: Optional[List[str]] = None,
+                                   attack_types: Optional[List[str]] = None,
+                                   protocols: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """Фильтрация атак по нескольким параметрам"""
+        try:
+            params = {}
+
+            if frequencies:
+                params["frequency"] = ",".join(frequencies)
+
+            if danger_levels:
+                params["danger"] = ",".join(danger_levels)
+
+            if attack_types:
+                params["attack_type"] = ",".join(attack_types)
+
+            if protocols:
+                params["protocol"] = ",".join(protocols)
+
+            if not params:
+                return self.get_all_attacks()
+
+            response = self.session.get(
+                f"{self.base_url}/attacks/filter",
+                params=params
+            )
+            response.raise_for_status()
+            data = response.json()
+            return self._extract_attacks_data(data)
+        except requests.exceptions.RequestException as e:
+            print(f"Filter by multiple error: {e}")
+            return []
+
+    def _extract_attacks_data(self, data: Any) -> List[Dict[str, Any]]:
+        """Извлекает данные об атаках из ответа сервера"""
+        if isinstance(data, dict):
+            if 'data' in data:
+                return data['data']
+            elif 'attacks' in data:
+                return data['attacks']
+            else:
+                return []
+        elif isinstance(data, list):
+            valid_attacks = []
+            for item in data:
+                if isinstance(item, dict):
+                    valid_attacks.append(item)
+                else:
+                    print(f"Warning: Skipping non-dict item in attacks list: {item}")
+            return valid_attacks
+        else:
+            print(f"Warning: Unexpected data format from server: {type(data)}")
+            return []
+
     def get_all_attacks(self) -> List[Dict[str, Any]]:
         """Получение всех атак"""
         try:
             response = self.session.get(f"{self.base_url}/attacks")
             response.raise_for_status()
-
             data = response.json()
-
-            if isinstance(data, dict) and 'data' in data:
-                return data['data']
-            elif isinstance(data, list):
-                return data
-            else:
-                return []
-
+            return self._extract_attacks_data(data)
         except requests.exceptions.RequestException as e:
             print(f"Error fetching attacks: {e}")
             return []

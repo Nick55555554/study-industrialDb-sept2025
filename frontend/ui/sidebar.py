@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from datetime import datetime
 
+
 class Sidebar:
     def __init__(self, parent, app):
         self.app = app
@@ -8,12 +9,12 @@ class Sidebar:
 
     def setup_ui(self, parent):
         """Создание боковой панели"""
-        sidebar = ctk.CTkFrame(parent, width=280, fg_color=self.app.colors["card_bg"],
+        sidebar = ctk.CTkFrame(parent, width=250, fg_color=self.app.colors["card_bg"],
                                corner_radius=0)
         sidebar.pack(side="left", fill="y", padx=(0, 5), pady=0)
         sidebar.pack_propagate(False)
 
-        # Логотип и заголовок
+        # Логотип
         self.create_logo_section(sidebar)
 
         # Навигация
@@ -25,15 +26,12 @@ class Sidebar:
     def create_logo_section(self, parent):
         """Создание секции с логотипом"""
         logo_frame = ctk.CTkFrame(parent, fg_color="transparent")
-        logo_frame.pack(fill="x", padx=20, pady=30)
+        logo_frame.pack(fill="x", padx=20, pady=20)
 
-        ctk.CTkLabel(logo_frame, text="🛡️", font=ctk.CTkFont(size=28)).pack()
+        ctk.CTkLabel(logo_frame, text="🛡️", font=ctk.CTkFont(size=24)).pack()
         ctk.CTkLabel(logo_frame, text="DDoS Manager",
-                     font=ctk.CTkFont(size=20, weight="bold"),
+                     font=ctk.CTkFont(size=16, weight="bold"),
                      text_color=self.app.colors["text_light"]).pack(pady=(5, 0))
-        ctk.CTkLabel(logo_frame, text="Security Dashboard",
-                     font=ctk.CTkFont(size=12),
-                     text_color=self.app.colors["text_muted"]).pack()
 
     def create_navigation_section(self, parent):
         """Создание секции навигации"""
@@ -42,76 +40,42 @@ class Sidebar:
 
         # Кнопки навигации
         nav_buttons = [
-            ("🏠 Главное окно", self.app.show_main_window),
-            ("📊 Дашборд", self.app.show_dashboard),
-            ("📋 Все атаки", self.app.show_attacks_list),
-            ("⚙️ Настройки", self.app.show_settings)
+            ("🏠 Main Dashboard", self.app.show_dashboard),
+            ("➕ Add Attack", self.app.show_attack_form),
+            ("📋 View Table", self.app.show_attacks_list)
         ]
 
         for text, command in nav_buttons:
             btn = ctk.CTkButton(nav_frame, text=text, command=command,
                                 fg_color="transparent", hover_color="#2a2a4a",
-                                anchor="w", font=ctk.CTkFont(size=14))
+                                anchor="w", font=ctk.CTkFont(size=14),
+                                height=40)
             btn.pack(fill="x", pady=5)
 
     def create_stats_section(self, parent):
         """Создание секции статистики"""
-        stats_frame = ctk.CTkFrame(parent, fg_color="#2a2a4a")
+        stats_frame = ctk.CTkFrame(parent, fg_color="#2a2a4a", corner_radius=8)
         stats_frame.pack(fill="x", padx=15, pady=20)
 
-        ctk.CTkLabel(stats_frame, text="Быстрая статистика",
-                     font=ctk.CTkFont(weight="bold")).pack(anchor="w", pady=(10, 5))
+        ctk.CTkLabel(stats_frame, text="Quick Stats",
+                     font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=15, pady=(10, 5))
 
-        self.stats_label = ctk.CTkLabel(stats_frame, text="", justify="left",
+        self.stats_label = ctk.CTkLabel(stats_frame, text="Loading...", justify="left",
                                         font=ctk.CTkFont(size=12))
-        self.stats_label.pack(anchor="w", pady=(0, 10))
-
-        self.update_stats()
+        self.stats_label.pack(anchor="w", padx=15, pady=(0, 10))
 
     def update_stats(self):
-        """Обновление статистики в сайдбаре"""
-        try:
-            if not hasattr(self.app, 'attacks') or not isinstance(self.app.attacks, list):
-                stats_text = "Всего атак: 0\nКритичных: 0\nАктивных: 0\nОбновлено: " + datetime.now().strftime("%H:%M")
-                self.stats_label.configure(text=stats_text)
-                return
+        """Обновление статистики"""
+        total_attacks = len(self.app.attacks)
+        critical_attacks = len([a for a in self.app.attacks if a.get("danger") == "critical"])
+        high_freq_attacks = len(
+            [a for a in self.app.attacks if a.get("frequency") in ["high", "very_high", "continuous"]])
 
-            total_attacks = len(self.app.attacks)
+        current_time = datetime.now().strftime("%H:%M")
 
-            # Безопасный подсчет critical атак
-            critical_attacks = 0
-            active_attacks = 0
-            high_freq_attacks = 0
+        stats_text = f"""Total Attacks: {total_attacks}
+Critical: {critical_attacks}
+High Frequency: {high_freq_attacks}
+Updated: {current_time}"""
 
-            for attack in self.app.attacks:
-                if isinstance(attack, dict):
-                    if attack.get("danger") == "critical":
-                        critical_attacks += 1
-                    # Если есть поле status, используем его, иначе считаем все активными
-                    if attack.get("status") == "active":
-                        active_attacks += 1
-                    elif "status" not in attack:
-                        active_attacks += 1  # Если статуса нет, считаем активной
-
-                    # Подсчет high frequency атак
-                    if attack.get("frequency") in ["high", "very_high", "continuous"]:
-                        high_freq_attacks += 1
-
-            current_time = datetime.now().strftime("%H:%M")
-            stats_text = f"""Всего атак: {total_attacks}
-Критичных: {critical_attacks}
-Активных: {active_attacks}
-Высокой частоты: {high_freq_attacks}
-Обновлено: {current_time}"""
-
-            self.stats_label.configure(text=stats_text)
-
-        except Exception as e:
-            print(f"Error updating sidebar stats: {e}")
-            current_time = datetime.now().strftime("%H:%M")
-            stats_text = f"""Всего атак: Ошибка
-Критичных: Ошибка
-Активных: Ошибка
-Высокой частоты: Ошибка
-Обновлено: {current_time}"""
-            self.stats_label.configure(text=stats_text)
+        self.stats_label.configure(text=stats_text)
