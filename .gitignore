@@ -14,3 +14,6 @@ dist/
 build/
 coverage/
 .nyc_output
+.cpython-312.pyc
+__pycache__/
+*.pyc
