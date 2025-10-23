@@ -1,448 +1,1003 @@
 import customtkinter as ctk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import threading
-from datetime import datetime
-
+import re
 
 class AttackTable:
     def __init__(self, parent, app):
         self.app = app
-        self.tree = None
-        self.filtered_attacks = []
-        self.current_filters = {
-            "frequency": [],
-            "danger": [],
-            "attack_type": [],
-            "protocol": []
-        }
+        self.selected_columns = []
         self.setup_ui(parent)
-        self.refresh_table()
 
     def setup_ui(self, parent):
-        """Создание улучшенной таблицы с фильтрами"""
+        """Создание интерфейса конструктора запросов"""
         main_frame = ctk.CTkFrame(parent, fg_color="transparent")
         main_frame.pack(fill="both", expand=True, padx=15, pady=15)
 
-        # Заголовок и статистика
+        # Заголовок
         header_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         header_frame.pack(fill="x", pady=(0, 20))
 
-        # Заголовок
-        title_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
-        title_frame.pack(fill="x")
-
-        ctk.CTkLabel(title_frame, text="📋 Attacks Overview",
+        ctk.CTkLabel(header_frame, text="🔍 Advanced Query Builder", 
                      font=ctk.CTkFont(size=24, weight="bold")).pack(side="left")
 
-        # Статистика
-        self.stats_label = ctk.CTkLabel(title_frame, text="Loading...",
-                                        font=ctk.CTkFont(size=12),
-                                        text_color=self.app.colors["text_muted"])
-        self.stats_label.pack(side="right")
+        # Основной контейнер с вкладками
+        self.tabview = ctk.CTkTabview(main_frame, fg_color=self.app.colors["card_bg"])
+        self.tabview.pack(fill="both", expand=True)
 
-        # Панель управления
-        control_frame = ctk.CTkFrame(main_frame, fg_color=self.app.colors["card_bg"], corner_radius=12)
-        control_frame.pack(fill="x", pady=(0, 15))
+        # Создаем вкладки
+        self.select_tab = self.tabview.add("📋 SELECT Builder")
+        self.search_tab = self.tabview.add("🔎 Text Search")
+        self.functions_tab = self.tabview.add("🛠️ String Functions")
 
-        control_content = ctk.CTkFrame(control_frame, fg_color="transparent")
-        control_content.pack(fill="x", padx=20, pady=15)
-
-        # Левая часть - кнопки действий
-        left_controls = ctk.CTkFrame(control_content, fg_color="transparent")
-        left_controls.pack(side="left")
-
-        # Кнопка обновления
-        refresh_btn = ctk.CTkButton(left_controls, text="🔄 Refresh Data",
-                                    command=self.refresh_table,
-                                    width=140, height=36,
-                                    fg_color=self.app.colors["primary"],
-                                    hover_color="#1f4a63",
-                                    font=ctk.CTkFont(weight="bold"))
-        refresh_btn.pack(side="left", padx=(0, 15))
-
-        # Кнопка удаления выбранного
-        self.delete_btn = ctk.CTkButton(left_controls, text="🗑️ Delete Selected",
-                                        command=self.delete_selected_attack,
-                                        width=140, height=36,
-                                        fg_color=self.app.colors["danger"],
-                                        hover_color="#e55a5a",
-                                        font=ctk.CTkFont(weight="bold"),
-                                        state="disabled")
-        self.delete_btn.pack(side="left", padx=(0, 15))
-
-        # Правая часть - фильтры
-        right_controls = ctk.CTkFrame(control_content, fg_color="transparent")
-        right_controls.pack(side="right")
-
-        # Фильтры (API фильтрация)
-        filters_frame = ctk.CTkFrame(right_controls, fg_color="transparent")
-        filters_frame.pack(side="left")
-
-        # Фильтр по частоте
-        ctk.CTkLabel(filters_frame, text="📊 Freq:", font=ctk.CTkFont(size=12)).pack(side="left", padx=(0, 5))
-        self.frequency_filter = ctk.CTkComboBox(filters_frame,
-                                                values=["All", "low", "medium", "high", "very_high", "continuous"],
-                                                width=120, height=36,
-                                                command=self.on_frequency_filter_change)
-        self.frequency_filter.pack(side="left", padx=(0, 10))
-        self.frequency_filter.set("All")
-
-        # Фильтр по опасности
-        ctk.CTkLabel(filters_frame, text="🛡️ Danger:", font=ctk.CTkFont(size=12)).pack(side="left", padx=(0, 5))
-        self.danger_filter = ctk.CTkComboBox(filters_frame,
-                                             values=["All", "low", "medium", "high", "critical"],
-                                             width=100, height=36,
-                                             command=self.on_danger_filter_change)
-        self.danger_filter.pack(side="left", padx=(0, 10))
-        self.danger_filter.set("All")
-
-        # Фильтр по типу атаки
-        ctk.CTkLabel(filters_frame, text="🎯 Type:", font=ctk.CTkFont(size=12)).pack(side="left", padx=(0, 5))
-        self.attack_type_filter = ctk.CTkComboBox(filters_frame,
-                                                  values=["All", "volumetric", "protocol", "application",
-                                                          "amplification"],
-                                                  width=120, height=36,
-                                                  command=self.on_attack_type_filter_change)
-        self.attack_type_filter.pack(side="left", padx=(0, 10))
-        self.attack_type_filter.set("All")
-
-        # Фильтр по протоколу
-        ctk.CTkLabel(filters_frame, text="🔗 Protocol:", font=ctk.CTkFont(size=12)).pack(side="left", padx=(0, 5))
-        self.protocol_filter = ctk.CTkComboBox(filters_frame,
-                                               values=["All", "tcp", "udp", "dns", "http", "https", "icmp"],
-                                               width=100, height=36,
-                                               command=self.on_protocol_filter_change)
-        self.protocol_filter.pack(side="left", padx=(0, 10))
-        self.protocol_filter.set("All")
-
-        # Контейнер для таблицы
-        table_container = ctk.CTkFrame(main_frame, fg_color=self.app.colors["card_bg"], corner_radius=12)
-        table_container.pack(fill="both", expand=True)
-
-        # Создание стилизованной таблицы
-        self.create_table(table_container)
+        # Наполняем вкладки
+        self.setup_select_tab()
+        self.setup_search_tab()
+        self.setup_functions_tab()
 
         # Статус бар
         self.status_frame = ctk.CTkFrame(main_frame, fg_color="transparent", height=30)
         self.status_frame.pack(fill="x", pady=(10, 0))
         self.status_frame.pack_propagate(False)
 
-        self.status_label = ctk.CTkLabel(self.status_frame, text="Ready",
+        self.status_label = ctk.CTkLabel(self.status_frame, text="Ready to build queries",
                                          text_color=self.app.colors["text_muted"],
                                          font=ctk.CTkFont(size=12))
         self.status_label.pack(side="left")
 
-    def create_table(self, parent):
-        """Создание стилизованной таблицы"""
-        # Кастомный стиль для таблицы
-        style = ttk.Style()
-        style.theme_use("default")
+    def setup_select_tab(self):
+        """Вкладка конструктора SELECT запросов"""
+        container = ctk.CTkFrame(self.select_tab, fg_color="transparent")
+        container.pack(fill="both", expand=True, padx=20, pady=20)
 
-        # Стиль для обычных строк
-        style.configure("Custom.Treeview",
-                        background=self.app.colors["card_bg"],
-                        foreground=self.app.colors["text_light"],
-                        fieldbackground=self.app.colors["card_bg"],
-                        borderwidth=0,
-                        rowheight=35,
-                        font=('Segoe UI', 10))
+        # Верхняя панель - выбор таблицы
+        top_panel = ctk.CTkFrame(container, fg_color=self.app.colors["card_bg"], corner_radius=12)
+        top_panel.pack(fill="x", pady=(0, 10))
 
-        # Стиль для заголовков
-        style.configure("Custom.Treeview.Heading",
-                        background="#2a2a4a",
-                        foreground=self.app.colors["text_light"],
-                        relief="flat",
-                        borderwidth=0,
-                        font=('Segoe UI', 11, 'bold'))
+        top_content = ctk.CTkFrame(top_panel, fg_color="transparent")
+        top_content.pack(fill="x", padx=20, pady=15)
 
-        # Стиль для выделенной строки
-        style.map("Custom.Treeview",
-                  background=[('selected', '#1f6aa5')],
-                  foreground=[('selected', 'white')])
+        ctk.CTkLabel(top_content, text="Select Table:", 
+                    font=ctk.CTkFont(weight="bold")).pack(side="left", padx=(0, 10))
 
-        # Создание таблицы БЕЗ колонки Actions
-        columns = ("Name", "Frequency", "Danger", "Type", "Source IPs", "Ports", "Targets", "Created")
-        self.tree = ttk.Treeview(parent, columns=columns, show="headings", style="Custom.Treeview")
+        self.table_selector = ctk.CTkComboBox(top_content, 
+                                             values=["Loading..."],
+                                             width=200,
+                                             command=self.on_table_selected)
+        self.table_selector.pack(side="left", padx=(0, 10))
 
-        # Настройка колонок с улучшенными заголовками
-        column_config = {
-            "Name": {"width": 200, "anchor": "w"},
-            "Frequency": {"width": 100, "anchor": "center"},
-            "Danger": {"width": 100, "anchor": "center"},
-            "Type": {"width": 120, "anchor": "center"},
-            "Source IPs": {"width": 180, "anchor": "w"},
-            "Ports": {"width": 120, "anchor": "center"},
-            "Targets": {"width": 90, "anchor": "center"},
-            "Created": {"width": 110, "anchor": "center"}
-        }
+        ctk.CTkButton(top_content, text="🔄 Refresh", 
+                     command=self.refresh_table_structure,
+                     width=80).pack(side="left")
 
-        for col in columns:
-            self.tree.heading(col, text=col)
-            self.tree.column(col, **column_config[col])
+        # Основной контент
+        main_content = ctk.CTkFrame(container, fg_color="transparent")
+        main_content.pack(fill="both", expand=True)
 
-        # Кастомный скроллбар
-        scrollbar = ctk.CTkScrollbar(parent, orientation="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
+        # Левая панель - выбор колонок и условия
+        left_panel = ctk.CTkFrame(main_content, fg_color=self.app.colors["card_bg"], corner_radius=12)
+        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10))
 
-        # Размещение таблицы и скроллбара
-        self.tree.pack(side="left", fill="both", expand=True, padx=15, pady=15)
-        scrollbar.pack(side="right", fill="y", padx=(0, 15), pady=15)
+        # Секция выбора колонок
+        columns_section = ctk.CTkFrame(left_panel, fg_color="transparent")
+        columns_section.pack(fill="x", padx=20, pady=15)
 
-        # Привязка событий ТОЛЬКО для выбора строки
-        self.tree.bind("<<TreeviewSelect>>", self.on_row_select)
+        ctk.CTkLabel(columns_section, text="📊 Select Columns", 
+                    font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w")
 
-    def on_frequency_filter_change(self, choice):
-        """Обработка изменения фильтра по частоте"""
-        if choice == "All":
-            self.current_filters["frequency"] = []
-        else:
-            self.current_filters["frequency"] = [choice]
+        # Список доступных колонок
+        columns_frame = ctk.CTkFrame(columns_section, fg_color="transparent")
+        columns_frame.pack(fill="x", pady=10)
 
-        self.apply_api_filters()
+        ctk.CTkLabel(columns_frame, text="Available Columns:").pack(anchor="w")
+        
+        self.available_columns_list = tk.Listbox(columns_frame, 
+                                               bg=self.app.colors["card_bg"],
+                                               fg=self.app.colors["text_light"],
+                                               selectbackground=self.app.colors["primary"],
+                                               height=6)
+        scrollbar1 = ctk.CTkScrollbar(columns_frame, orientation="vertical", command=self.available_columns_list.yview)
+        self.available_columns_list.configure(yscrollcommand=scrollbar1.set)
+        
+        self.available_columns_list.pack(side="left", fill="both", expand=True)
+        scrollbar1.pack(side="right", fill="y")
 
-    def on_danger_filter_change(self, choice):
-        """Обработка изменения фильтра по опасности"""
-        if choice == "All":
-            self.current_filters["danger"] = []
-        else:
-            self.current_filters["danger"] = [choice]
+        # Кнопки управления выбором колонок
+        column_buttons = ctk.CTkFrame(columns_frame, fg_color="transparent")
+        column_buttons.pack(fill="x", pady=5)
 
-        self.apply_api_filters()
+        ctk.CTkButton(column_buttons, text="➡️ Add", 
+                     command=self.add_column,
+                     width=80).pack(side="left", padx=(0, 5))
+        
+        ctk.CTkButton(column_buttons, text="⬅️ Remove", 
+                     command=self.remove_column,
+                     width=80).pack(side="left", padx=5)
 
-    def on_attack_type_filter_change(self, choice):
-        """Обработка изменения фильтра по типу атаки"""
-        if choice == "All":
-            self.current_filters["attack_type"] = []
-        else:
-            self.current_filters["attack_type"] = [choice]
+        ctk.CTkButton(column_buttons, text="⭐ Add All", 
+                     command=self.add_all_columns,
+                     width=80).pack(side="left", padx=5)
 
-        self.apply_api_filters()
+        # Выбранные колонки
+        ctk.CTkLabel(columns_frame, text="Selected Columns:").pack(anchor="w", pady=(10, 0))
+        
+        self.selected_columns_list = tk.Listbox(columns_frame,
+                                              bg=self.app.colors["card_bg"],
+                                              fg=self.app.colors["text_light"],
+                                              selectbackground=self.app.colors["success"],
+                                              height=6)
+        scrollbar2 = ctk.CTkScrollbar(columns_frame, orientation="vertical", command=self.selected_columns_list.yview)
+        self.selected_columns_list.configure(yscrollcommand=scrollbar2.set)
+        
+        self.selected_columns_list.pack(side="left", fill="both", expand=True)
+        scrollbar2.pack(side="right", fill="y")
 
-    def on_protocol_filter_change(self, choice):
-        """Обработка изменения фильтра по протоколу"""
-        if choice == "All":
-            self.current_filters["protocol"] = []
-        else:
-            self.current_filters["protocol"] = [choice]
+        # Секция WHERE условия
+        where_section = ctk.CTkFrame(left_panel, fg_color="transparent")
+        where_section.pack(fill="x", padx=20, pady=15)
 
-        self.apply_api_filters()
+        ctk.CTkLabel(where_section, text="🔍 WHERE Conditions", 
+                    font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w")
 
-    def apply_api_filters(self):
-        """Применение фильтров через API"""
-        self.status_label.configure(text="🔄 Applying filters...")
+        where_content = ctk.CTkFrame(where_section, fg_color="transparent")
+        where_content.pack(fill="x", pady=10)
 
-        def filter_thread():
-            try:
-                # Получаем отфильтрованные данные с сервера
-                frequencies = self.current_filters["frequency"]
-                danger_levels = self.current_filters["danger"]
-                attack_types = self.current_filters["attack_type"]
-                protocols = self.current_filters["protocol"]
+        # Поле для WHERE условия
+        ctk.CTkLabel(where_content, text="WHERE Condition:").pack(anchor="w")
+        self.where_condition = ctk.CTkEntry(where_content, 
+                                          placeholder_text="age > 18 AND name LIKE 'A%'")
+        self.where_condition.pack(fill="x", pady=(5, 10))
 
-                if frequencies or danger_levels or attack_types or protocols:
-                    # Используем API фильтрацию
-                    filtered_attacks = self.app.api_client.filter_attacks_by_multiple(
-                        frequencies=frequencies,
-                        danger_levels=danger_levels,
-                        attack_types=attack_types,
-                        protocols=protocols
-                    )
-                else:
-                    # Если фильтры пустые, загружаем все атаки
-                    filtered_attacks = self.app.api_client.get_all_attacks()
+        # Секция GROUP BY и HAVING
+        group_section = ctk.CTkFrame(left_panel, fg_color="transparent")
+        group_section.pack(fill="x", padx=20, pady=15)
 
-                # Обновляем данные в основном потоке
-                self.app.window.after(0, lambda: self.on_filters_applied(filtered_attacks))
+        ctk.CTkLabel(group_section, text="📊 GROUP BY & HAVING", 
+                    font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w")
 
-            except Exception as e:
-                self.app.window.after(0, lambda: self.show_error(f"Failed to apply filters: {e}"))
+        group_content = ctk.CTkFrame(group_section, fg_color="transparent")
+        group_content.pack(fill="x", pady=10)
 
-        thread = threading.Thread(target=filter_thread)
-        thread.daemon = True
-        thread.start()
+        ctk.CTkLabel(group_content, text="GROUP BY Columns:").pack(anchor="w")
+        self.group_by_columns = ctk.CTkEntry(group_content, 
+                                           placeholder_text="department, year")
+        self.group_by_columns.pack(fill="x", pady=(5, 5))
 
-    def on_filters_applied(self, filtered_attacks):
-        """Обработка применения фильтров"""
-        self.app.attacks = filtered_attacks
-        self.update_table_content()
-        self.status_label.configure(text=f"✅ Filters applied - {len(filtered_attacks)} attacks")
+        ctk.CTkLabel(group_content, text="HAVING Condition:").pack(anchor="w", pady=(10, 0))
+        self.having_condition = ctk.CTkEntry(group_content, 
+                                           placeholder_text="COUNT(*) > 5")
+        self.having_condition.pack(fill="x", pady=(5, 10))
 
-    def on_row_select(self, event):
-        """Обработка выбора строки"""
-        selection = self.tree.selection()
-        if selection:
-            self.delete_btn.configure(state="normal")
-        else:
-            self.delete_btn.configure(state="disabled")
+        # Правая панель - ORDER BY и выполнение
+        right_panel = ctk.CTkFrame(main_content, fg_color=self.app.colors["card_bg"], corner_radius=12)
+        right_panel.pack(side="left", fill="both", expand=True)
 
-    def delete_selected_attack(self):
-        """Удаление выбранной атаки"""
-        selection = self.tree.selection()
-        if not selection:
-            self.app.show_error("Please select an attack to delete!")
-            return
+        # Секция ORDER BY
+        order_section = ctk.CTkFrame(right_panel, fg_color="transparent")
+        order_section.pack(fill="x", padx=20, pady=15)
 
-        item = selection[0]
-        attack_id = self.tree.item(item)["tags"][0] if self.tree.item(item)["tags"] else None
-        attack_name = self.tree.item(item)["values"][0] if self.tree.item(item)["values"] else "Unknown"
+        ctk.CTkLabel(order_section, text="📈 ORDER BY", 
+                    font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w")
 
-        if attack_id:
-            self.delete_attack(attack_id, attack_name)
+        order_content = ctk.CTkFrame(order_section, fg_color="transparent")
+        order_content.pack(fill="x", pady=10)
 
-    def refresh_table(self):
-        """Обновление таблицы"""
-        self.status_label.configure(text="🔄 Loading attacks...")
+        ctk.CTkLabel(order_content, text="Sort Columns:").pack(anchor="w")
+        self.order_by_columns = ctk.CTkEntry(order_content, 
+                                           placeholder_text="name ASC, age DESC")
+        self.order_by_columns.pack(fill="x", pady=(5, 10))
 
+        # Секция агрегатных функций
+        aggregate_section = ctk.CTkFrame(right_panel, fg_color="transparent")
+        aggregate_section.pack(fill="x", padx=20, pady=15)
+
+        ctk.CTkLabel(aggregate_section, text="🧮 Aggregate Functions", 
+                    font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w")
+
+        aggregate_content = ctk.CTkFrame(aggregate_section, fg_color="transparent")
+        aggregate_content.pack(fill="x", pady=10)
+
+        # Кнопки быстрого добавления агрегатных функций
+        agg_buttons_frame = ctk.CTkFrame(aggregate_content, fg_color="transparent")
+        agg_buttons_frame.pack(fill="x")
+
+        ctk.CTkButton(agg_buttons_frame, text="COUNT(*)", 
+                     command=lambda: self.add_aggregate("COUNT(*)"),
+                     width=100).pack(side="left", padx=(0, 5))
+        
+        ctk.CTkButton(agg_buttons_frame, text="AVG(column)", 
+                     command=lambda: self.show_aggregate_dialog("AVG"),
+                     width=100).pack(side="left", padx=5)
+        
+        ctk.CTkButton(agg_buttons_frame, text="SUM(column)", 
+                     command=lambda: self.show_aggregate_dialog("SUM"),
+                     width=100).pack(side="left", padx=5)
+
+        agg_buttons_frame2 = ctk.CTkFrame(aggregate_content, fg_color="transparent")
+        agg_buttons_frame2.pack(fill="x", pady=5)
+
+        ctk.CTkButton(agg_buttons_frame2, text="MAX(column)", 
+                     command=lambda: self.show_aggregate_dialog("MAX"),
+                     width=100).pack(side="left", padx=(0, 5))
+        
+        ctk.CTkButton(agg_buttons_frame2, text="MIN(column)", 
+                     command=lambda: self.show_aggregate_dialog("MIN"),
+                     width=100).pack(side="left", padx=5)
+
+        # Секция предварительного просмотра SQL
+        preview_section = ctk.CTkFrame(right_panel, fg_color="transparent")
+        preview_section.pack(fill="both", expand=True, padx=20, pady=15)
+
+        ctk.CTkLabel(preview_section, text="👁️ SQL Preview", 
+                    font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w")
+
+        self.sql_preview = ctk.CTkTextbox(preview_section, height=120)
+        self.sql_preview.pack(fill="both", expand=True, pady=(10, 10))
+        self.sql_preview.configure(state="disabled")
+
+        # Кнопки выполнения
+        action_buttons = ctk.CTkFrame(right_panel, fg_color="transparent")
+        action_buttons.pack(fill="x", padx=20, pady=15)
+
+        ctk.CTkButton(action_buttons, text="🔄 Update Preview", 
+                     command=self.update_sql_preview,
+                     width=140).pack(side="left", padx=(0, 10))
+
+        ctk.CTkButton(action_buttons, text="⚡ Execute Query", 
+                     command=self.execute_query,
+                     fg_color=self.app.colors["success"],
+                     hover_color="#1a8a4f",
+                     width=140).pack(side="left")
+
+    def setup_search_tab(self):
+        """Вкладка текстового поиска"""
+        container = ctk.CTkFrame(self.search_tab, fg_color="transparent")
+        container.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Верхняя панель - выбор таблицы и колонки
+        top_panel = ctk.CTkFrame(container, fg_color=self.app.colors["card_bg"], corner_radius=12)
+        top_panel.pack(fill="x", pady=(0, 10))
+
+        top_content = ctk.CTkFrame(top_panel, fg_color="transparent")
+        top_content.pack(fill="x", padx=20, pady=15)
+
+        ctk.CTkLabel(top_content, text="Select Table & Column:", 
+                    font=ctk.CTkFont(weight="bold")).pack(side="left", padx=(0, 10))
+
+        self.search_table_selector = ctk.CTkComboBox(top_content, 
+                                                   values=["Loading..."],
+                                                   width=150,
+                                                   command=self.on_search_table_selected)
+        self.search_table_selector.pack(side="left", padx=(0, 10))
+
+        self.search_column_selector = ctk.CTkComboBox(top_content, 
+                                                    values=["Select table first"],
+                                                    width=150)
+        self.search_column_selector.pack(side="left", padx=(0, 10))
+
+        # Основной контент
+        main_content = ctk.CTkFrame(container, fg_color="transparent")
+        main_content.pack(fill="both", expand=True)
+
+        # Левая панель - настройки поиска
+        left_panel = ctk.CTkFrame(main_content, fg_color=self.app.colors["card_bg"], corner_radius=12)
+        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10))
+
+        search_config_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
+        search_config_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(search_config_frame, text="🔍 Search Configuration", 
+                    font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", pady=(0, 15))
+
+        # Тип поиска
+        ctk.CTkLabel(search_config_frame, text="Search Type:").pack(anchor="w")
+        self.search_type = ctk.CTkComboBox(search_config_frame,
+                                         values=["LIKE Pattern", "POSIX Regex", "Full Text Search"])
+        self.search_type.pack(fill="x", pady=(5, 15))
+        self.search_type.set("LIKE Pattern")
+        self.search_type.configure(command=self.on_search_type_changed)
+
+        # Поле поиска
+        ctk.CTkLabel(search_config_frame, text="Search Pattern:").pack(anchor="w")
+        self.search_pattern = ctk.CTkEntry(search_config_frame, 
+                                         placeholder_text="Enter search pattern")
+        self.search_pattern.pack(fill="x", pady=(5, 10))
+
+        # Опции для LIKE
+        self.like_options_frame = ctk.CTkFrame(search_config_frame, fg_color="transparent")
+        self.like_options_frame.pack(fill="x", pady=5)
+
+        self.case_sensitive = ctk.BooleanVar(value=False)
+        ctk.CTkCheckBox(self.like_options_frame, text="Case Sensitive", 
+                       variable=self.case_sensitive).pack(anchor="w")
+
+        # Опции для Regex
+        self.regex_options_frame = ctk.CTkFrame(search_config_frame, fg_color="transparent")
+        
+        self.regex_flags = ctk.StringVar(value="")
+        ctk.CTkCheckBox(self.regex_options_frame, text="Case Insensitive (i)",
+                       variable=ctk.BooleanVar(value=False),
+                       command=lambda: self.toggle_regex_flag('i')).pack(anchor="w")
+        ctk.CTkCheckBox(self.regex_options_frame, text="Multiline (m)",
+                       variable=ctk.BooleanVar(value=False),
+                       command=lambda: self.toggle_regex_flag('m')).pack(anchor="w")
+
+        # Примеры поиска
+        examples_frame = ctk.CTkFrame(search_config_frame, fg_color="transparent")
+        examples_frame.pack(fill="x", pady=15)
+
+        ctk.CTkLabel(examples_frame, text="💡 Search Examples:", 
+                    font=ctk.CTkFont(weight="bold")).pack(anchor="w")
+
+        examples_text = """
+LIKE Examples:
+• 'john%' - names starting with 'john'
+• '%son' - names ending with 'son'  
+• '%smith%' - names containing 'smith'
+• '_e%' - names with 'e' as second letter
+
+Regex Examples:
+• '^J.*n$' - starts with J, ends with n
+• 'Sm(th|ith)' - Smith or Sm ith
+• '[A-Z][a-z]+' - Capitalized words
+• '\\d{3}-\\d{2}-\\d{4}' - SSN pattern
+        """
+        
+        examples_label = ctk.CTkLabel(examples_frame, text=examples_text,
+                                    justify="left", font=ctk.CTkFont(size=11),
+                                    text_color=self.app.colors["text_muted"])
+        examples_label.pack(anchor="w", pady=5)
+
+        # Кнопки поиска
+        search_buttons = ctk.CTkFrame(search_config_frame, fg_color="transparent")
+        search_buttons.pack(fill="x", pady=10)
+
+        ctk.CTkButton(search_buttons, text="🔍 Test Pattern", 
+                     command=self.test_search_pattern,
+                     width=120).pack(side="left", padx=(0, 10))
+
+        ctk.CTkButton(search_buttons, text="⚡ Execute Search", 
+                     command=self.execute_search,
+                     fg_color=self.app.colors["primary"],
+                     hover_color="#1f4a63",
+                     width=120).pack(side="left")
+
+        # Правая панель - результаты тестирования
+        right_panel = ctk.CTkFrame(main_content, fg_color=self.app.colors["card_bg"], corner_radius=12)
+        right_panel.pack(side="left", fill="both", expand=True)
+
+        results_frame = ctk.CTkFrame(right_panel, fg_color="transparent")
+        results_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(results_frame, text="🧪 Pattern Testing", 
+                    font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", pady=(0, 15))
+
+        # Поле для тестовых данных
+        ctk.CTkLabel(results_frame, text="Test Data (one per line):").pack(anchor="w")
+        self.test_data = ctk.CTkTextbox(results_frame, height=100)
+        self.test_data.pack(fill="x", pady=(5, 10))
+        self.test_data.insert("1.0", "John Smith\nJane Doe\nBob Johnson\nAlice Williams")
+
+        # Результаты тестирования
+        ctk.CTkLabel(results_frame, text="Test Results:").pack(anchor="w")
+        self.test_results = ctk.CTkTextbox(results_frame, height=150)
+        self.test_results.pack(fill="both", expand=True, pady=(5, 10))
+        self.test_results.configure(state="disabled")
+
+    def setup_functions_tab(self):
+        """Вкладка функций работы со строками"""
+        container = ctk.CTkFrame(self.functions_tab, fg_color="transparent")
+        container.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Верхняя панель - ввод данных
+        top_panel = ctk.CTkFrame(container, fg_color=self.app.colors["card_bg"], corner_radius=12)
+        top_panel.pack(fill="x", pady=(0, 10))
+
+        top_content = ctk.CTkFrame(top_panel, fg_color="transparent")
+        top_content.pack(fill="x", padx=20, pady=15)
+
+        ctk.CTkLabel(top_content, text="Input String:", 
+                    font=ctk.CTkFont(weight="bold")).pack(side="left", padx=(0, 10))
+
+        self.input_string = ctk.CTkEntry(top_content, 
+                                       placeholder_text="Enter text to process...",
+                                       width=300)
+        self.input_string.pack(side="left", padx=(0, 10))
+        self.input_string.insert(0, "  Hello World  ")
+
+        ctk.CTkButton(top_content, text="🔄 Process", 
+                     command=self.process_string_functions,
+                     width=100).pack(side="left")
+
+        # Основной контент - функции
+        main_content = ctk.CTkFrame(container, fg_color="transparent")
+        main_content.pack(fill="both", expand=True)
+
+        # Левая панель - базовые функции
+        left_panel = ctk.CTkFrame(main_content, fg_color=self.app.colors["card_bg"], corner_radius=12)
+        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10))
+
+        basic_functions_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
+        basic_functions_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(basic_functions_frame, text="🛠️ Basic String Functions", 
+                    font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", pady=(0, 15))
+
+        # Кнопки базовых функций
+        basic_buttons1 = ctk.CTkFrame(basic_functions_frame, fg_color="transparent")
+        basic_buttons1.pack(fill="x", pady=5)
+
+        ctk.CTkButton(basic_buttons1, text="UPPER()", 
+                     command=lambda: self.apply_string_function("UPPER"),
+                     width=120).pack(side="left", padx=(0, 5))
+        
+        ctk.CTkButton(basic_buttons1, text="LOWER()", 
+                     command=lambda: self.apply_string_function("LOWER"),
+                     width=120).pack(side="left", padx=5)
+
+        basic_buttons2 = ctk.CTkFrame(basic_functions_frame, fg_color="transparent")
+        basic_buttons2.pack(fill="x", pady=5)
+
+        ctk.CTkButton(basic_buttons2, text="TRIM()", 
+                     command=lambda: self.apply_string_function("TRIM"),
+                     width=120).pack(side="left", padx=(0, 5))
+        
+        ctk.CTkButton(basic_buttons2, text="LTRIM()", 
+                     command=lambda: self.apply_string_function("LTRIM"),
+                     width=120).pack(side="left", padx=5)
+
+        basic_buttons3 = ctk.CTkFrame(basic_functions_frame, fg_color="transparent")
+        basic_buttons3.pack(fill="x", pady=5)
+
+        ctk.CTkButton(basic_buttons3, text="RTRIM()", 
+                     command=lambda: self.apply_string_function("RTRIM"),
+                     width=120).pack(side="left", padx=(0, 5))
+
+        # Функции подстрок
+        substring_frame = ctk.CTkFrame(basic_functions_frame, fg_color="transparent")
+        substring_frame.pack(fill="x", pady=15)
+
+        ctk.CTkLabel(substring_frame, text="Substring Functions:", 
+                    font=ctk.CTkFont(weight="bold")).pack(anchor="w")
+
+        substring_buttons = ctk.CTkFrame(substring_frame, fg_color="transparent")
+        substring_buttons.pack(fill="x", pady=5)
+
+        ctk.CTkButton(substring_buttons, text="SUBSTRING()", 
+                     command=self.show_substring_dialog,
+                     width=120).pack(side="left", padx=(0, 5))
+
+        # Правая панель - продвинутые функции
+        right_panel = ctk.CTkFrame(main_content, fg_color=self.app.colors["card_bg"], corner_radius=12)
+        right_panel.pack(side="left", fill="both", expand=True)
+
+        advanced_functions_frame = ctk.CTkFrame(right_panel, fg_color="transparent")
+        advanced_functions_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(advanced_functions_frame, text="⚡ Advanced String Functions", 
+                    font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", pady=(0, 15))
+
+        # Функции дополнения
+        padding_frame = ctk.CTkFrame(advanced_functions_frame, fg_color="transparent")
+        padding_frame.pack(fill="x", pady=5)
+
+        ctk.CTkLabel(padding_frame, text="Padding Functions:").pack(anchor="w")
+
+        padding_buttons = ctk.CTkFrame(padding_frame, fg_color="transparent")
+        padding_buttons.pack(fill="x", pady=5)
+
+        ctk.CTkButton(padding_buttons, text="LPAD()", 
+                     command=self.show_lpad_dialog,
+                     width=120).pack(side="left", padx=(0, 5))
+        
+        ctk.CTkButton(padding_buttons, text="RPAD()", 
+                     command=self.show_rpad_dialog,
+                     width=120).pack(side="left", padx=5)
+
+        # Конкатенация
+        concat_frame = ctk.CTkFrame(advanced_functions_frame, fg_color="transparent")
+        concat_frame.pack(fill="x", pady=15)
+
+        ctk.CTkLabel(concat_frame, text="Concatenation:").pack(anchor="w")
+
+        concat_content = ctk.CTkFrame(concat_frame, fg_color="transparent")
+        concat_content.pack(fill="x", pady=5)
+
+        ctk.CTkLabel(concat_content, text="String 2:").pack(side="left", padx=(0, 5))
+        self.concat_string = ctk.CTkEntry(concat_content, 
+                                        placeholder_text="Text to concatenate",
+                                        width=150)
+        self.concat_string.pack(side="left", padx=(0, 10))
+
+        ctk.CTkButton(concat_content, text="CONCAT", 
+                     command=self.apply_concat,
+                     width=100).pack(side="left", padx=(0, 5))
+        
+        ctk.CTkButton(concat_content, text="||", 
+                     command=self.apply_concat_operator,
+                     width=50).pack(side="left")
+
+        # Результаты
+        results_frame = ctk.CTkFrame(advanced_functions_frame, fg_color="transparent")
+        results_frame.pack(fill="both", expand=True, pady=15)
+
+        ctk.CTkLabel(results_frame, text="📊 Results:", 
+                    font=ctk.CTkFont(weight="bold")).pack(anchor="w")
+
+        self.function_results = ctk.CTkTextbox(results_frame, height=150)
+        self.function_results.pack(fill="both", expand=True, pady=(5, 0))
+        self.function_results.configure(state="disabled")
+
+    def on_search_type_changed(self, choice):
+        """Обновление интерфейса при изменении типа поиска"""
+        search_type = self.search_type.get()
+        
+        # Скрываем все опции
+        self.like_options_frame.pack_forget()
+        self.regex_options_frame.pack_forget()
+        
+        # Показываем соответствующие опции
+        if search_type == "LIKE Pattern":
+            self.like_options_frame.pack(fill="x", pady=5)
+        elif search_type == "POSIX Regex":
+            self.regex_options_frame.pack(fill="x", pady=5)
+
+    def toggle_regex_flag(self, flag):
+        """Переключение флагов regex"""
+        # Реализация переключения флагов
+        pass
+
+    def on_table_selected(self, choice):
+        """Обработка выбора таблицы"""
+        self.refresh_columns_list()
+
+    def on_search_table_selected(self, choice):
+        """Обработка выбора таблицы для поиска"""
+        self.refresh_search_columns()
+
+    def refresh_table_structure(self):
+        """Обновление структуры таблицы"""
+        self.status_label.configure(text="🔄 Loading table structure...")
+        
         def refresh_thread():
             try:
-                # Загружаем все атаки (игнорируем текущие фильтры)
-                attacks = self.app.api_client.get_all_attacks()
-                self.app.window.after(0, lambda: self.on_data_loaded(attacks))
+                # Здесь будет вызов API для получения структуры таблицы
+                tables = ["attacks", "users", "logs", "settings"]
+                columns = ["id", "name", "description", "created_at", "status"]
+                
+                self.app.window.after(0, lambda: self.on_table_structure_loaded(tables, columns))
             except Exception as e:
-                self.app.window.after(0, lambda: self.show_error(f"Failed to refresh: {e}"))
+                self.app.window.after(0, lambda: self.show_error(f"Failed to load table structure: {e}"))
 
         thread = threading.Thread(target=refresh_thread)
         thread.daemon = True
         thread.start()
 
-    def on_data_loaded(self, attacks):
-        """Обработка загруженных данных"""
-        self.app.attacks = attacks
-        self.update_table_content()
-        self.status_label.configure(text=f"✅ Loaded {len(attacks)} attacks")
+    def on_table_structure_loaded(self, tables, columns):
+        """Обработка загруженной структуры таблицы"""
+        # Обновляем селекторы таблиц
+        self.table_selector.configure(values=tables)
+        self.search_table_selector.configure(values=tables)
+        
+        if tables:
+            self.table_selector.set(tables[0])
+            self.search_table_selector.set(tables[0])
+        
+        # Обновляем список колонок
+        self.available_columns_list.delete(0, tk.END)
+        for column in columns:
+            self.available_columns_list.insert(tk.END, column)
+        
+        self.status_label.configure(text=f"✅ Loaded {len(columns)} columns")
 
-    def update_table_content(self):
-        """Обновление содержимого таблицы"""
-        if not self.tree:
+    def refresh_columns_list(self):
+        """Обновление списка колонок для выбранной таблицы"""
+        table_name = self.table_selector.get()
+        if not table_name or table_name == "Loading...":
             return
 
-        # Очищаем таблицу
-        for item in self.tree.get_children():
-            self.tree.delete(item)
+        # Здесь будет вызов API для получения колонок таблицы
+        # Временные данные для демонстрации
+        columns = ["id", "name", "description", "created_at", "status", "severity"]
+        
+        self.available_columns_list.delete(0, tk.END)
+        for column in columns:
+            self.available_columns_list.insert(tk.END, column)
 
-        self.filtered_attacks = self.app.attacks.copy()
+    def refresh_search_columns(self):
+        """Обновление колонок для поиска"""
+        table_name = self.search_table_selector.get()
+        if not table_name or table_name == "Loading...":
+            return
 
-        # Заполняем данными с проверкой структуры
-        for attack in self.filtered_attacks:
+        # Здесь будет вызов API для получения колонок таблицы
+        columns = ["name", "description", "notes", "title"]
+        
+        self.search_column_selector.configure(values=columns)
+        if columns:
+            self.search_column_selector.set(columns[0])
+
+    def add_column(self):
+        """Добавление выбранной колонки"""
+        selection = self.available_columns_list.curselection()
+        if not selection:
+            return
+
+        column_name = self.available_columns_list.get(selection[0])
+        if column_name not in self.selected_columns:
+            self.selected_columns.append(column_name)
+            self.selected_columns_list.insert(tk.END, column_name)
+
+    def remove_column(self):
+        """Удаление выбранной колонки"""
+        selection = self.selected_columns_list.curselection()
+        if not selection:
+            return
+
+        column_name = self.selected_columns_list.get(selection[0])
+        if column_name in self.selected_columns:
+            self.selected_columns.remove(column_name)
+            self.selected_columns_list.delete(selection[0])
+
+    def add_all_columns(self):
+        """Добавление всех колонок"""
+        all_columns = self.available_columns_list.get(0, tk.END)
+        self.selected_columns.clear()
+        self.selected_columns_list.delete(0, tk.END)
+        
+        for column in all_columns:
+            self.selected_columns.append(column)
+            self.selected_columns_list.insert(tk.END, column)
+
+    def add_aggregate(self, aggregate_func):
+        """Добавление агрегатной функции"""
+        if aggregate_func == "COUNT(*)":
+            self.selected_columns.append("COUNT(*)")
+            self.selected_columns_list.insert(tk.END, "COUNT(*)")
+
+    def show_aggregate_dialog(self, func_name):
+        """Показ диалога для агрегатной функции с колонкой"""
+        dialog = ctk.CTkToplevel(self.app.window)
+        dialog.title(f"{func_name} Function")
+        dialog.geometry("300x150")
+        dialog.resizable(False, False)
+        dialog.transient(self.app.window)
+        dialog.grab_set()
+
+        content = ctk.CTkFrame(dialog, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(content, text=f"Select column for {func_name}:").pack(anchor="w", pady=(0, 10))
+        
+        column_combo = ctk.CTkComboBox(content, values=list(self.available_columns_list.get(0, tk.END)))
+        column_combo.pack(fill="x", pady=(0, 15))
+
+        def add_aggregate_column():
+            column = column_combo.get()
+            if column:
+                agg_func = f"{func_name}({column})"
+                self.selected_columns.append(agg_func)
+                self.selected_columns_list.insert(tk.END, agg_func)
+                dialog.destroy()
+
+        buttons_frame = ctk.CTkFrame(content, fg_color="transparent")
+        buttons_frame.pack(fill="x")
+
+        ctk.CTkButton(buttons_frame, text="Add", 
+                     command=add_aggregate_column).pack(side="right", padx=(10, 0))
+
+        ctk.CTkButton(buttons_frame, text="Cancel", 
+                     command=dialog.destroy).pack(side="right")
+
+    def update_sql_preview(self):
+        """Обновление предварительного просмотра SQL"""
+        try:
+            # Формируем базовый SELECT
+            if not self.selected_columns:
+                columns = "*"
+            else:
+                columns = ", ".join(self.selected_columns)
+            
+            table_name = self.table_selector.get()
+            sql = f"SELECT {columns}\nFROM {table_name}"
+
+            # Добавляем WHERE
+            where_condition = self.where_condition.get().strip()
+            if where_condition:
+                sql += f"\nWHERE {where_condition}"
+
+            # Добавляем GROUP BY
+            group_by = self.group_by_columns.get().strip()
+            if group_by:
+                sql += f"\nGROUP BY {group_by}"
+
+                # Добавляем HAVING
+                having_condition = self.having_condition.get().strip()
+                if having_condition:
+                    sql += f"\nHAVING {having_condition}"
+
+            # Добавляем ORDER BY
+            order_by = self.order_by_columns.get().strip()
+            if order_by:
+                sql += f"\nORDER BY {order_by}"
+
+            # Обновляем preview
+            self.sql_preview.configure(state="normal")
+            self.sql_preview.delete("1.0", "end")
+            self.sql_preview.insert("1.0", sql)
+            self.sql_preview.configure(state="disabled")
+
+        except Exception as e:
+            self.show_error(f"Error generating SQL: {e}")
+
+    def execute_query(self):
+        """Выполнение сформированного запроса"""
+        sql = self.sql_preview.get("1.0", "end-1c").strip()
+        if not sql:
+            self.show_error("No query to execute!")
+            return
+
+        self.status_label.configure(text="⚡ Executing query...")
+        
+        def execute_thread():
             try:
-                # Проверяем что attack - это словарь
-                if not isinstance(attack, dict):
-                    print(f"Warning: Skipping non-dict attack: {attack}")
-                    continue
-
-                # Безопасное извлечение данных с значениями по умолчанию
-                name = attack.get("name", "Unknown")
-                frequency = attack.get("frequency", "unknown")
-                danger = attack.get("danger", "unknown")
-                attack_type = attack.get("attack_type", "unknown")
-
-                # Обработка source_ips
-                source_ips = attack.get("source_ips", [])
-                if not isinstance(source_ips, list):
-                    source_ips = []
-                source_ips_preview = ", ".join(source_ips[:2])
-                if len(source_ips) > 2:
-                    source_ips_preview += "..."
-
-                # Обработка affected_ports
-                affected_ports = attack.get("affected_ports", [])
-                if not isinstance(affected_ports, list):
-                    affected_ports = []
-                ports_preview = ", ".join(map(str, affected_ports[:3]))
-                if len(affected_ports) > 3:
-                    ports_preview += "..."
-
-                # Обработка targets
-                targets = attack.get("targets", [])
-                if not isinstance(targets, list):
-                    targets = []
-                targets_count = len(targets)
-
-                # Форматирование даты
-                created_date = "Unknown"
-                created_at = attack.get("created_at", "")
-                if created_at:
-                    try:
-                        if "T" in created_at:
-                            dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                        else:
-                            dt = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S")
-                        created_date = dt.strftime("%m/%d/%Y")
-                    except:
-                        created_date = created_at[:10] if len(created_at) >= 10 else "Unknown"
-
-                # Вставляем данные в таблицу
-                item = self.tree.insert("", "end", values=(
-                    name,
-                    frequency.title(),
-                    danger.title(),
-                    attack_type.title(),
-                    source_ips_preview,
-                    ports_preview,
-                    f"🎯 {targets_count}",
-                    created_date
-                ), tags=(attack.get("id", ""),))
-
-                # Добавляем цветовое кодирование для уровня опасности
-                danger_lower = danger.lower()
-                if danger_lower == "critical":
-                    self.tree.set(item, "Danger", "🔴 Critical")
-                elif danger_lower == "high":
-                    self.tree.set(item, "Danger", "🟠 High")
-                elif danger_lower == "medium":
-                    self.tree.set(item, "Danger", "🟡 Medium")
-                elif danger_lower == "low":
-                    self.tree.set(item, "Danger", "🟢 Low")
-
+                # Здесь будет вызов API для выполнения запроса
+                # Временная заглушка
+                self.app.window.after(0, lambda: self.on_query_executed([
+                    {"id": 1, "name": "Example", "count": 5},
+                    {"id": 2, "name": "Test", "count": 3}
+                ]))
             except Exception as e:
-                print(f"Error processing attack data: {e}")
-                print(f"Problematic attack data: {attack}")
-                continue
+                self.app.window.after(0, lambda: self.show_error(f"Query execution failed: {e}"))
 
-        self.update_stats()
-        self.status_label.configure(text=f"✅ Loaded {len(self.filtered_attacks)} attacks")
-        self.delete_btn.configure(state="disabled")
+        thread = threading.Thread(target=execute_thread)
+        thread.daemon = True
+        thread.start()
 
-    def update_stats(self):
-        """Обновление статистики"""
-        total = len(self.app.attacks)
-        critical = len([a for a in self.app.attacks if a.get("danger") == "critical"])
-        high_freq = len([a for a in self.app.attacks if a.get("frequency") in ["high", "very_high"]])
+    def on_query_executed(self, results):
+        """Обработка результатов выполнения запроса"""
+        self.status_label.configure(text=f"✅ Query executed - {len(results)} rows")
+        # Здесь будет отображение результатов в основном интерфейсе
+        self.app.show_success(f"Query executed successfully! Found {len(results)} rows.")
 
-        self.stats_label.configure(text=f"📊 Total: {total} | 🔴 Critical: {critical} | 🚀 High Freq: {high_freq}")
+    def test_search_pattern(self):
+        """Тестирование поискового шаблона"""
+        pattern = self.search_pattern.get().strip()
+        test_data = self.test_data.get("1.0", "end-1c").strip()
+        
+        if not pattern:
+            self.show_error("Please enter a search pattern!")
+            return
 
-    def delete_attack(self, attack_id, attack_name):
-        """Удаление атаки"""
-        import tkinter.messagebox as mb
+        if not test_data:
+            self.show_error("Please enter test data!")
+            return
 
-        # Диалог подтверждения с улучшенным дизайном
-        result = mb.askyesno(
-            "Confirm Deletion",
-            f"Are you sure you want to delete the attack?\n\n"
-            f"📛 Name: {attack_name}\n"
-            f"⚠️ This action cannot be undone!",
-            icon='warning'
-        )
+        search_type = self.search_type.get()
+        test_lines = test_data.split('\n')
+        results = []
 
-        if result:
-            def delete_thread():
-                try:
-                    self.app.api_client.delete_attack(attack_id)
-                    self.app.window.after(0, lambda: self.on_attack_deleted(attack_name))
-                except Exception as e:
-                    self.app.window.after(0, lambda: self.show_error(f"Failed to delete: {e}"))
+        try:
+            if search_type == "LIKE Pattern":
+                # Преобразуем LIKE в regex для тестирования
+                regex_pattern = pattern.replace('%', '.*').replace('_', '.')
+                if not self.case_sensitive.get():
+                    regex_pattern = f"(?i){regex_pattern}"
+                
+                for line in test_lines:
+                    if line and re.match(regex_pattern, line):
+                        results.append(f"✓ MATCH: {line}")
+                    else:
+                        results.append(f"✗ NO MATCH: {line}")
 
-            self.status_label.configure(text="🗑️ Deleting attack...")
-            thread = threading.Thread(target=delete_thread)
-            thread.daemon = True
-            thread.start()
+            elif search_type == "POSIX Regex":
+                flags = re.IGNORECASE if not self.case_sensitive.get() else 0
+                for line in test_lines:
+                    if line and re.search(pattern, line, flags):
+                        results.append(f"✓ MATCH: {line}")
+                    else:
+                        results.append(f"✗ NO MATCH: {line}")
 
-    def on_attack_deleted(self, attack_name):
-        """Обработка успешного удаления"""
-        self.app.show_success(f"Attack '{attack_name}' was successfully deleted!")
-        self.refresh_table()
+            # Обновляем результаты
+            self.test_results.configure(state="normal")
+            self.test_results.delete("1.0", "end")
+            self.test_results.insert("1.0", "\n".join(results))
+            self.test_results.configure(state="disabled")
+
+        except re.error as e:
+            self.show_error(f"Invalid regex pattern: {e}")
+
+    def execute_search(self):
+        """Выполнение поискового запроса"""
+        table_name = self.search_table_selector.get()
+        column_name = self.search_column_selector.get()
+        pattern = self.search_pattern.get().strip()
+        search_type = self.search_type.get()
+
+        if not all([table_name, column_name, pattern]):
+            self.show_error("Please fill all search fields!")
+            return
+
+        self.status_label.configure(text="🔍 Executing search...")
+        
+        def search_thread():
+            try:
+                # Здесь будет вызов API для выполнения поиска
+                # Временная заглушка
+                results = [{"id": 1, column_name: "Example match"}]
+                self.app.window.after(0, lambda: self.on_search_executed(results))
+            except Exception as e:
+                self.app.window.after(0, lambda: self.show_error(f"Search failed: {e}"))
+
+        thread = threading.Thread(target=search_thread)
+        thread.daemon = True
+        thread.start()
+
+    def on_search_executed(self, results):
+        """Обработка результатов поиска"""
+        self.status_label.configure(text=f"✅ Search completed - {len(results)} matches")
+        self.app.show_success(f"Search completed! Found {len(results)} matches.")
+
+    def process_string_functions(self):
+        """Обработка строковых функций"""
+        input_text = self.input_string.get().strip()
+        if not input_text:
+            self.show_error("Please enter input text!")
+            return
+
+        # Очищаем предыдущие результаты
+        self.function_results.configure(state="normal")
+        self.function_results.delete("1.0", "end")
+        
+        # Добавляем заголовок
+        self.function_results.insert("end", f"Input: '{input_text}'\n")
+        self.function_results.insert("end", "="*50 + "\n\n")
+        
+        self.function_results.configure(state="disabled")
+
+    def apply_string_function(self, func_name):
+        """Применение строковой функции"""
+        input_text = self.input_string.get().strip()
+        if not input_text:
+            self.show_error("Please enter input text!")
+            return
+
+        result = ""
+        
+        if func_name == "UPPER":
+            result = input_text.upper()
+        elif func_name == "LOWER":
+            result = input_text.lower()
+        elif func_name == "TRIM":
+            result = input_text.strip()
+        elif func_name == "LTRIM":
+            result = input_text.lstrip()
+        elif func_name == "RTRIM":
+            result = input_text.rstrip()
+
+        self.display_function_result(func_name, input_text, result)
+
+    def show_substring_dialog(self):
+        """Диалог для функции SUBSTRING"""
+        self.show_string_function_dialog("SUBSTRING", ["Start position:", "Length (optional):"])
+
+    def show_lpad_dialog(self):
+        """Диалог для функции LPAD"""
+        self.show_string_function_dialog("LPAD", ["Total length:", "Pad character:"])
+
+    def show_rpad_dialog(self):
+        """Диалог для функции RPAD"""
+        self.show_string_function_dialog("RPAD", ["Total length:", "Pad character:"])
+
+    def show_string_function_dialog(self, func_name, field_labels):
+        """Общий диалог для строковых функций с параметрами"""
+        dialog = ctk.CTkToplevel(self.app.window)
+        dialog.title(f"{func_name} Function")
+        dialog.geometry("300x200")
+        dialog.resizable(False, False)
+        dialog.transient(self.app.window)
+        dialog.grab_set()
+
+        content = ctk.CTkFrame(dialog, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=20, pady=20)
+
+        entries = []
+        for label in field_labels:
+            ctk.CTkLabel(content, text=label).pack(anchor="w", pady=(5, 0))
+            entry = ctk.CTkEntry(content)
+            entry.pack(fill="x", pady=(2, 10))
+            entries.append(entry)
+
+        def apply_function():
+            params = [entry.get() for entry in entries]
+            input_text = self.input_string.get().strip()
+            
+            if not input_text:
+                self.show_error("Please enter input text!")
+                return
+
+            result = self.calculate_string_function(func_name, input_text, params)
+            self.display_function_result(func_name, input_text, result, params)
+            dialog.destroy()
+
+        buttons_frame = ctk.CTkFrame(content, fg_color="transparent")
+        buttons_frame.pack(fill="x", pady=10)
+
+        ctk.CTkButton(buttons_frame, text="Apply", 
+                     command=apply_function).pack(side="right", padx=(10, 0))
+
+        ctk.CTkButton(buttons_frame, text="Cancel", 
+                     command=dialog.destroy).pack(side="right")
+
+    def calculate_string_function(self, func_name, input_text, params):
+        """Вычисление результата строковой функции"""
+        try:
+            if func_name == "SUBSTRING":
+                start = int(params[0]) - 1  # Convert to 0-based index
+                length = int(params[1]) if params[1] else None
+                if length:
+                    return input_text[start:start + length]
+                else:
+                    return input_text[start:]
+                    
+            elif func_name == "LPAD":
+                length = int(params[0])
+                pad_char = params[1] if params[1] else " "
+                return input_text.rjust(length, pad_char)
+                
+            elif func_name == "RPAD":
+                length = int(params[0])
+                pad_char = params[1] if params[1] else " "
+                return input_text.ljust(length, pad_char)
+                
+        except (ValueError, IndexError) as e:
+            return f"Error: {str(e)}"
+
+    def apply_concat(self):
+        """Применение функции CONCAT"""
+        input_text = self.input_string.get().strip()
+        concat_text = self.concat_string.get().strip()
+        
+        if not input_text or not concat_text:
+            self.show_error("Please enter both strings!")
+            return
+
+        result = input_text + concat_text
+        self.display_function_result("CONCAT", input_text, result, [concat_text])
+
+    def apply_concat_operator(self):
+        """Применение оператора ||"""
+        input_text = self.input_string.get().strip()
+        concat_text = self.concat_string.get().strip()
+        
+        if not input_text or not concat_text:
+            self.show_error("Please enter both strings!")
+            return
+
+        result = input_text + concat_text
+        self.display_function_result("||", input_text, result, [concat_text])
+
+    def display_function_result(self, func_name, input_text, result, params=None):
+        """Отображение результата функции"""
+        self.function_results.configure(state="normal")
+        
+        # Форматируем вывод
+        if params:
+            params_str = ", ".join([f"'{p}'" for p in params])
+            self.function_results.insert("end", f"{func_name}( '{input_text}', {params_str} )\n")
+        else:
+            self.function_results.insert("end", f"{func_name}( '{input_text}' )\n")
+            
+        self.function_results.insert("end", f"Result: '{result}'\n")
+        self.function_results.insert("end", "-" * 30 + "\n")
+        
+        self.function_results.see("end")
+        self.function_results.configure(state="disabled")
 
     def show_error(self, message):
         """Показ ошибки"""
         self.status_label.configure(text="❌ Error")
         self.app.show_error(message)
+
+# Не забудьте добавить импорт tkinter
+import tkinter as tk
