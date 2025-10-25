@@ -42,7 +42,10 @@ class Sidebar:
         nav_buttons = [
             ("🏠 Main Dashboard", self.app.show_dashboard),
             ("➕ Add Attack", self.app.show_attack_form),
-            ("📋 View Table", self.app.show_attacks_list)
+            ("📋 View Table", self.app.show_attacks_list),
+            ("🔧 DB Structure", self.app.show_alter_table_manager),
+            ("🔍 Query Builder", self.app.show_advanced_query_builder),
+            ("📖 Text Search", self.app.show_text_search_tool)
         ]
 
         for text, command in nav_buttons:
@@ -67,9 +70,9 @@ class Sidebar:
     def update_stats(self):
         """Обновление статистики"""
         total_attacks = len(self.app.attacks)
-        critical_attacks = len([a for a in self.app.attacks if a.get("danger") == "critical"])
+        critical_attacks = len([a for a in self.app.attacks if str(a.get("danger", "")).lower() == "critical"])
         high_freq_attacks = len(
-            [a for a in self.app.attacks if a.get("frequency") in ["high", "very_high", "continuous"]])
+            [a for a in self.app.attacks if str(a.get("frequency", "")).lower() in ["high", "very_high", "continuous"]])
 
         current_time = datetime.now().strftime("%H:%M")
 

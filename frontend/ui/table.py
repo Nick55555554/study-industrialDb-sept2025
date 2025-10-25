@@ -336,7 +336,7 @@ class AttackTable:
                 danger = attack.get("danger", "unknown")
                 attack_type = attack.get("attack_type", "unknown")
 
-                # Обработка source_ips
+                # Обработка source_ips - теперь это уже список из БД
                 source_ips = attack.get("source_ips", [])
                 if not isinstance(source_ips, list):
                     source_ips = []
@@ -344,7 +344,7 @@ class AttackTable:
                 if len(source_ips) > 2:
                     source_ips_preview += "..."
 
-                # Обработка affected_ports
+                # Обработка affected_ports - теперь это уже список из БД
                 affected_ports = attack.get("affected_ports", [])
                 if not isinstance(affected_ports, list):
                     affected_ports = []
@@ -363,13 +363,19 @@ class AttackTable:
                 created_at = attack.get("created_at", "")
                 if created_at:
                     try:
-                        if "T" in created_at:
-                            dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        # Пробуем разные форматы даты
+                        if isinstance(created_at, str):
+                            if "T" in created_at:
+                                # ISO format: 2024-01-15T10:30:00
+                                dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                            else:
+                                # PostgreSQL timestamp format: 2024-01-15 10:30:00
+                                dt = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S")
+                            created_date = dt.strftime("%m/%d/%Y")
                         else:
-                            dt = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S")
-                        created_date = dt.strftime("%m/%d/%Y")
-                    except:
-                        created_date = created_at[:10] if len(created_at) >= 10 else "Unknown"
+                            created_date = str(created_at)[:10]
+                    except Exception as date_error:
+                        created_date = str(created_at)[:10] if created_at else "Unknown"
 
                 # Вставляем данные в таблицу
                 item = self.tree.insert("", "end", values=(
@@ -384,7 +390,7 @@ class AttackTable:
                 ), tags=(attack.get("id", ""),))
 
                 # Добавляем цветовое кодирование для уровня опасности
-                danger_lower = danger.lower()
+                danger_lower = str(danger).lower()
                 if danger_lower == "critical":
                     self.tree.set(item, "Danger", "🔴 Critical")
                 elif danger_lower == "high":
@@ -406,8 +412,8 @@ class AttackTable:
     def update_stats(self):
         """Обновление статистики"""
         total = len(self.app.attacks)
-        critical = len([a for a in self.app.attacks if a.get("danger") == "critical"])
-        high_freq = len([a for a in self.app.attacks if a.get("frequency") in ["high", "very_high"]])
+        critical = len([a for a in self.app.attacks if str(a.get("danger", "")).lower() == "critical"])
+        high_freq = len([a for a in self.app.attacks if str(a.get("frequency", "")).lower() in ["high", "very_high"]])
 
         self.stats_label.configure(text=f"📊 Total: {total} | 🔴 Critical: {critical} | 🚀 High Freq: {high_freq}")
 
@@ -440,6 +446,11 @@ class AttackTable:
     def on_attack_deleted(self, attack_name):
         """Обработка успешного удаления"""
         self.app.show_success(f"Attack '{attack_name}' was successfully deleted!")
+
+        # ОБНОВЛЯЕМ СТАТИСТИКУ В ДАШБОРДЕ И БОКОВОЙ ПАНЕЛИ
+        self.app.refresh_attacks()  # Это обновит данные во всем приложении
+
+        # Обновляем таблицу
         self.refresh_table()
 
     def show_error(self, message):

@@ -4,7 +4,7 @@ from ui.header import Header
 from ui.forms import AttackForm
 from ui.table import AttackTable
 from ui.dashboard import Dashboard
-from api.client import DDOSApiClient
+from api.client import DDOSDatabaseClient
 import threading
 from tkinter import messagebox
 
@@ -16,8 +16,8 @@ class DDoSAttackApp:
         self.window.geometry("1400x800")
         self.window.minsize(1200, 700)
 
-        # Инициализация API клиента
-        self.api_client = DDOSApiClient()
+        # Инициализация клиента БД вместо API клиента
+        self.api_client = DDOSDatabaseClient()
 
         # Загрузка данных с сервера
         self.attacks = []
@@ -38,8 +38,8 @@ class DDoSAttackApp:
 
         # Enum значения для формы (только разрешенные типы)
         self.frequency_levels = ["low", "medium", "high", "very_high", "continuous"]
-        self.danger_levels = ["low", "medium", "high", "critical"]  # Только эти значения
-        self.attack_types = ["volumetric", "protocol", "application", "amplification"]  # Только эти значения
+        self.danger_levels = ["low", "medium", "high", "critical"]
+        self.attack_types = ["volumetric", "protocol", "application", "amplification"]
         self.protocols = ["tcp", "udp", "dns", "http", "https", "icmp"]
 
         self.current_edit_id = None
@@ -100,9 +100,69 @@ class DDoSAttackApp:
         self.header.set_title("View Attacks Table")
         AttackTable(self.content_frame, self)
 
+    # НОВЫЕ МЕТОДЫ ДЛЯ ДОПОЛНИТЕЛЬНОЙ ФУНКЦИОНАЛЬНОСТИ
+    def show_alter_table_manager(self):
+        """Показать менеджер ALTER TABLE операций"""
+        self.clear_content()
+        self.header.set_title("Database Structure Manager")
+        try:
+            from ui.alter_table_manager import AlterTableManager
+            AlterTableManager(self.content_frame, self)
+        except ImportError as e:
+            self.show_error(f"Module not found: {e}")
+        except Exception as e:
+            self.show_error(f"Failed to load Alter Table Manager: {e}")
+
+    def show_advanced_query_builder(self):
+        """Показать расширенный построитель запросов"""
+        self.clear_content()
+        self.header.set_title("Advanced Query Builder")
+        try:
+            from ui.advanced_query_builder import AdvancedQueryBuilder
+            AdvancedQueryBuilder(self.content_frame, self)
+        except ImportError as e:
+            self.show_error(f"Module not found: {e}")
+        except Exception as e:
+            self.show_error(f"Failed to load Query Builder: {e}")
+
+    def show_text_search_tool(self):
+        """Показать инструмент текстового поиска"""
+        self.clear_content()
+        self.header.set_title("Advanced Text Search")
+        try:
+            from ui.text_search_tool import TextSearchTool
+            TextSearchTool(self.content_frame, self)
+        except ImportError as e:
+            self.show_error(f"Module not found: {e}")
+        except Exception as e:
+            self.show_error(f"Failed to load Text Search Tool: {e}")
+
+    def show_string_functions_tool(self):
+        """Показать инструмент строковых функций"""
+        self.clear_content()
+        self.header.set_title("String Functions")
+        try:
+            from ui.string_functions_tool import StringFunctionsTool
+            StringFunctionsTool(self.content_frame, self)
+        except ImportError as e:
+            self.show_error(f"Module not found: {e}")
+        except Exception as e:
+            self.show_error(f"Failed to load String Functions Tool: {e}")
+
+    def show_join_wizard(self):
+        """Показать мастер соединений JOIN"""
+        self.clear_content()
+        self.header.set_title("JOIN Wizard")
+        try:
+            from ui.join_wizard import JoinWizard
+            JoinWizard(self.content_frame, self)
+        except ImportError as e:
+            self.show_error(f"Module not found: {e}")
+        except Exception as e:
+            self.show_error(f"Failed to load JOIN Wizard: {e}")
+
     def refresh_attacks(self):
         """Обновление списка атак с сервера"""
-
         def refresh_thread():
             try:
                 attacks = self.api_client.get_all_attacks()
